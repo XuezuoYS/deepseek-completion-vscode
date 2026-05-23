@@ -2,7 +2,7 @@
   "name": "deepseek-completion",
   "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "deepseek-helper",
   "engines": {
     "vscode": "^1.85.0"
@@ -51,10 +51,10 @@
     "configuration": {
       "title": "deepseek-completion",
       "properties": {
-        "deepseek-completion.apiKey": {
+        "deepseek-completion.apiKeyStatus": {
           "type": "string",
-          "default": "",
-          "markdownDescription": "| 操作 | 说明 |\n|------|------|\n| [🔑 设置 API 密钥](command:deepseek-completion.setApiKey) | 通过密码框安全输入密钥，存入系统凭据管理器 |\n| [🗑️ 清除 API 密钥](command:deepseek-completion.clearApiKey) | 从系统凭据管理器中删除已存储的密钥 |\n\n密钥通过 **操作系统凭据管理器** 加密存储（Windows 凭据管理器 / macOS Keychain），**不会**保存在 settings.json 中，也不会随设置同步。\n\n> 💡 点击上方链接即可操作，无需在此输入框内填写。"
+          "default": "❌ 未配置",
+          "markdownDescription": "| 操作 | 说明 |\n|------|------|\n| [🔑 设置 API 密钥](command:deepseek-completion.setApiKey) | 通过密码框安全输入密钥，存入系统凭据管理器 |\n| [🗑️ 清除 API 密钥](command:deepseek-completion.clearApiKey) | 从系统凭据管理器中删除已存储的密钥 |\n\n| 状态 | |\n|------|-|\n| 密钥状态 | 实时显示在左侧（可在此查看） |\n\n密钥通过 **操作系统凭据管理器** 加密存储，**不会**保存在 settings.json 中，也不会随设置同步。"
         },
         "deepseek-completion.apiEndpoint": {
           "type": "string",

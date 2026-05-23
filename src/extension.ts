@@ -30,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
             });
             if (key) {
                 await DeepSeekConfig.setApiKey(key.trim());
+                await updateApiKeyStatusInSettings();
                 vscode.window.showInformationMessage('✅ DeepSeek API 密钥已安全存储');
             }
         }
@@ -46,6 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
             );
             if (confirm === '确定') {
                 await DeepSeekConfig.clearApiKey();
+                await updateApiKeyStatusInSettings();
                 vscode.window.showInformationMessage('DeepSeek API 密钥已清除');
             }
         }
@@ -129,12 +131,26 @@ export function activate(context: vscode.ExtensionContext) {
         completionProvider
     );
 
-    // 检查 API 密钥是否配置
-    DeepSeekConfig.getApiKey().then((key) => {
+    // 检查 API 密钥是否配置并更新设置中的状态显示
+    DeepSeekConfig.getApiKey().then(async (key) => {
+        await updateApiKeyStatusInSettings();
         if (!key) {
             showSetupGuide();
         }
     });
+}
+
+/**
+ * 更新设置中的 API 密钥状态显示
+ */
+async function updateApiKeyStatusInSettings(): Promise<void> {
+    const key = await DeepSeekConfig.getApiKey();
+    const status = key ? '✅ 已配置' : '❌ 未配置';
+    await vscode.workspace.getConfiguration('deepseek-completion').update(
+        'apiKeyStatus',
+        status,
+        vscode.ConfigurationTarget.Global
+    );
 }
 
 /**
