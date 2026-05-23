@@ -88,7 +88,7 @@ export class DeepSeekConfig {
      * 获取补全触发延迟 (ms)
      */
     static getCompletionDelay(): number {
-        return vscode.workspace.getConfiguration(this.SECTION).get<number>('completionDelay', 500);
+        return vscode.workspace.getConfiguration(this.SECTION).get<number>('completionDelay', 50);
     }
 
     /**

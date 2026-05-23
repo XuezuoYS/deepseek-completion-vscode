@@ -11,6 +11,8 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
     private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
     private requestQueue: Map<string, AbortController> = new Map();
     private apiKeyWarningShown = false;
+    // 持久化状态栏：在补全等待期间持续显示旋转图标
+    private statusBarItem: vscode.StatusBarItem | null = null;
 
     constructor() {
         this.api = new DeepSeekAPI();
@@ -25,6 +27,8 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
         context: vscode.InlineCompletionContext,
         token: vscode.CancellationToken
     ): Promise<vscode.InlineCompletionItem[] | vscode.InlineCompletionList | undefined> {
+        const isAuto = context.triggerKind === vscode.InlineCompletionTriggerKind.Automatic;
+
         // 检查是否启用了补全
         if (!DeepSeekConfig.isCompletionEnabled()) {
             return undefined;
@@ -32,7 +36,6 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
 
         const apiKey = await DeepSeekConfig.getApiKey();
         if (!apiKey) {
-            // 仅提示一次，避免每次触发补全都弹出错误
             if (!this.apiKeyWarningShown) {
                 this.apiKeyWarningShown = true;
                 const setNow = '设置 API 密钥';
@@ -47,88 +50,92 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
             }
             return undefined;
         }
-        // 密钥已配置，重置提示标志
         this.apiKeyWarningShown = false;
 
-        // 只有在用户主动触发或输入时提供补全
-        if (context.triggerKind === vscode.InlineCompletionTriggerKind.Automatic) {
-            // 检查是否是在输入字符时触发
-            const lineText = document.lineAt(position).text;
-            const linePrefix = lineText.substring(0, position.character);
-
-            // 如果当前行太空或只是空白，不触发补全
+        // 自动触发时：检查行前缀长度
+        if (isAuto) {
+            const linePrefix = document.lineAt(position).text.substring(0, position.character);
             if (!linePrefix.trim() || linePrefix.trim().length < 2) {
                 return undefined;
             }
         }
 
-        // 触发补全时给用户可见提示（调试用途）
-        const triggerKindLabel = context.triggerKind === vscode.InlineCompletionTriggerKind.Automatic ? '自动' : '手动';
-        vscode.window.setStatusBarMessage(
-            `$(sparkle) DeepSeek 补全已触发（${triggerKindLabel}）行 ${position.line + 1}`,
-            2000
-        );
-
-        // 生成文件唯一键用于去重
+        // 文件唯一键（用于去重/防抖）
         const fileKey = `${document.uri.toString()}:${position.line}`;
 
-        // 取消之前的请求
-        const existingController = this.requestQueue.get(fileKey);
-        if (existingController) {
-            existingController.abort();
+        // === 取消同一文件+行上正在进行的旧请求和旧定时器 ===
+        const existing = this.requestQueue.get(fileKey);
+        if (existing) {
+            existing.abort();
+        }
+        const existingTimer = this.debounceTimers.get(fileKey);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
         }
 
-        // 延迟触发，避免频繁请求
-        const delay = DeepSeekConfig.getCompletionDelay();
-        if (delay > 0 && context.triggerKind === vscode.InlineCompletionTriggerKind.Automatic) {
-            return await new Promise((resolve) => {
-                const existingTimer = this.debounceTimers.get(fileKey);
-                if (existingTimer) {
-                    clearTimeout(existingTimer);
-                }
+        // 显示持续状态栏（旋转图标直到补全返回）
+        this.showBusyStatus(position, isAuto);
 
-                // 重要：为本次补全创建独立的 AbortController，
-                // 不依赖 VS Code 的 CancellationToken——
-                // 因为防抖期间 token 可能已被 VS Code 取消，
-                // 导致 getCompletion 中的 token.isCancellationRequested 为 true，
-                // 即使 API 请求成功，结果也会被丢弃。
-                const localAbortController = new AbortController();
-                this.requestQueue.set(fileKey, localAbortController);
+        const delay = isAuto ? DeepSeekConfig.getCompletionDelay() : 0;
+
+        if (delay > 0) {
+            // ---- 自动触发：防抖延迟，但完全不受 VS Code CancellationToken 影响 ----
+            return new Promise<vscode.InlineCompletionItem[] | undefined>((resolve) => {
+                const ctrl = new AbortController();
+                this.requestQueue.set(fileKey, ctrl);
 
                 const timer = setTimeout(async () => {
                     this.debounceTimers.delete(fileKey);
-                    // 使用本地 AbortController.signal 替代原 token
-                    const result = await this.getCompletion(document, position, localAbortController.signal);
+                    console.log('[DeepSeek 自动] 防抖结束 (' + delay + 'ms)，发起 API 请求', fileKey);
+                    const result = await this.getCompletion(document, position, ctrl.signal);
+                    console.log('[DeepSeek 自动] API 返回', fileKey, 'hasResult:', !!result);
+                    this.hideBusyStatus();
                     resolve(result);
                 }, delay);
 
                 this.debounceTimers.set(fileKey, timer);
 
-                // 如果 token 被取消，清理定时器和请求
-                token.onCancellationRequested(() => {
-                    const t = this.debounceTimers.get(fileKey);
-                    if (t) {
-                        clearTimeout(t);
-                        this.debounceTimers.delete(fileKey);
-                    }
-                    const c = this.requestQueue.get(fileKey);
-                    if (c) {
-                        c.abort();
-                        this.requestQueue.delete(fileKey);
-                    }
-                    resolve(undefined);
-                });
+                // ⚠️ 关键：不在 token.onCancellationRequested 中清理定时器或中止请求
+                // VS Code 可能在防抖期间取消 token（自动触发的超时约 200-300ms），
+                // 但我们的防抖可能比超时短（默认 50ms），定时器会先触发；即便超时先到，
+                // 也不应杀死请求——VS Code 收到结果后仍有可能显示虚影
             });
         }
 
-        // 手动触发时也使用独立 AbortController
-        const manualAbortController = new AbortController();
-        this.requestQueue.set(fileKey, manualAbortController);
+        // ---- 手动触发：无防抖，直接请求（token 可用于取消） ----
+        const ctrl = new AbortController();
+        this.requestQueue.set(fileKey, ctrl);
         token.onCancellationRequested(() => {
-            manualAbortController.abort();
+            ctrl.abort();
             this.requestQueue.delete(fileKey);
         });
-        return this.getCompletion(document, position, manualAbortController.signal);
+
+        console.log('[DeepSeek 手动] 发起 API 请求', fileKey);
+        const result = await this.getCompletion(document, position, ctrl.signal);
+        console.log('[DeepSeek 手动] API 返回', fileKey, 'hasResult:', !!result);
+        this.hideBusyStatus();
+        return result;
+    }
+
+    /** 显示忙碌状态栏（旋转图标，持续到补全返回） */
+    private showBusyStatus(position: vscode.Position, isAuto: boolean): void {
+        if (!this.statusBarItem) {
+            this.statusBarItem = vscode.window.createStatusBarItem(
+                vscode.StatusBarAlignment.Right,
+                99
+            );
+        }
+        const label = isAuto ? '自动' : '手动';
+        this.statusBarItem.text = `$(loading~spin) DeepSeek 补全中（${label}）行 ${position.line + 1}`;
+        this.statusBarItem.tooltip = 'DeepSeek 正在请求代码补全...';
+        this.statusBarItem.show();
+    }
+
+    /** 隐藏忙碌状态栏 */
+    private hideBusyStatus(): void {
+        if (this.statusBarItem) {
+            this.statusBarItem.hide();
+        }
     }
 
     /**
@@ -176,7 +183,7 @@ ${contextCode}
                 ],
                 {
                     temperature: 0.2,
-                    maxTokens: 128,
+                    maxTokens: 256,
                     signal
                 }
             );
@@ -288,16 +295,20 @@ ${contextCode}
      * 清理资源
      */
     dispose(): void {
-        // 清除所有定时器
+        // 清除所有防抖定时器
         for (const timer of this.debounceTimers.values()) {
             clearTimeout(timer);
         }
         this.debounceTimers.clear();
-
         // 取消所有请求
         for (const controller of this.requestQueue.values()) {
             controller.abort();
         }
         this.requestQueue.clear();
+        // 销毁状态栏
+        if (this.statusBarItem) {
+            this.statusBarItem.dispose();
+            this.statusBarItem = null;
+        }
     }
 }

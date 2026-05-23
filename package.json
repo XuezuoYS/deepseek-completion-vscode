@@ -2,7 +2,7 @@
   "name": "deepseek-completion",
   "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publisher": "deepseek-helper",
   "engines": {
     "vscode": "^1.85.0"
@@ -104,10 +104,10 @@
         },
         "deepseek-completion.completionDelay": {
           "type": "number",
-          "default": 500,
-          "minimum": 100,
-          "maximum": 5000,
-          "markdownDescription": "代码补全触发延迟（毫秒）"
+          "default": 50,
+          "minimum": 20,
+          "maximum": 2000,
+          "markdownDescription": "代码补全触发延迟（毫秒），较低的延迟响应更快但可能增加 API 调用次数"
         },
         "deepseek-completion.commitLanguage": {
           "type": "string",
