@@ -85,6 +85,13 @@ export class DeepSeekConfig {
     }
 
     /**
+     * 是否启用自动补全（关闭后只能手动触发）
+     */
+    static isAutoCompletionEnabled(): boolean {
+        return vscode.workspace.getConfiguration(this.SECTION).get<boolean>('enableAutoCompletion', true);
+    }
+
+    /**
      * 是否开启思考模式 (reasoning)
      */
     static isThinkingEnabled(): boolean {

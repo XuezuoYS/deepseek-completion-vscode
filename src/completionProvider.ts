@@ -52,8 +52,11 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
         }
         this.apiKeyWarningShown = false;
 
-        // 自动触发时：检查行前缀长度
+        // 自动触发时：检查是否启用了自动补全 以及 行前缀长度
         if (isAuto) {
+            if (!DeepSeekConfig.isAutoCompletionEnabled()) {
+                return undefined;
+            }
             const linePrefix = document.lineAt(position).text.substring(0, position.character);
             if (!linePrefix.trim() || linePrefix.trim().length < 2) {
                 return undefined;
