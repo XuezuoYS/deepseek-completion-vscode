@@ -50,6 +50,13 @@ export class DeepSeekConfig {
     }
 
     /**
+     * 获取 FIM 代码补全 API 端点（Beta）
+     */
+    static getCompletionEndpoint(): string {
+        return vscode.workspace.getConfiguration(this.SECTION).get<string>('completionEndpoint', 'https://api.deepseek.com/beta');
+    }
+
+    /**
      * 获取模型名称
      */
     static getModel(): string {

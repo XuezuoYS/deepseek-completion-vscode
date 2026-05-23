@@ -1,5 +1,14 @@
 # 更新日志
 
+## [0.3.0] - 2026-05-24
+
+### 重大变更
+- 🔄 代码补全改用 DeepSeek FIM (Fill In the Middle) API 替代 Chat API
+  - 新增 `completionEndpoint` 配置项（默认 `https://api.deepseek.com/beta`），与 Git 提交信息的 API 端点分开设置
+  - FIM 补全使用 prompt + suffix 模式，更准确地匹配光标上下文
+  - FIM 不支持思考模式，统一使用设置中的模型但不传 thinking 参数
+  - 设置中 `apiEndpoint` 现仅用于 Git 提交信息等聊天补全
+
 ## [0.2.8] - 2026-05-24
 
 ### 修复

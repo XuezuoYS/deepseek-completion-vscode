@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { DeepSeekConfig } from './config';
 
 /**
- * DeepSeek API 响应接口
+ * DeepSeek API 响应接口（Chat）
  */
 interface DeepSeekResponse {
     id: string;
@@ -19,6 +19,34 @@ interface DeepSeekResponse {
         completion_tokens: number;
         total_tokens: number;
     };
+}
+
+/**
+ * DeepSeek FIM 补全响应接口
+ */
+interface FIMResponse {
+    id: string;
+    choices: Array<{
+        text: string;
+        index: number;
+        finish_reason: string;
+    }>;
+    usage: {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+    };
+}
+
+/**
+ * FIM 补全选项
+ */
+interface FIMOptions {
+    prompt: string;
+    suffix?: string;
+    maxTokens?: number;
+    temperature?: number;
+    signal?: AbortSignal;
 }
 
 /**
@@ -91,6 +119,62 @@ export class DeepSeekAPI {
 
         const data = await response.json() as DeepSeekResponse;
         return data.choices[0]?.message?.content || '';
+    }
+
+    /**
+     * 向 DeepSeek API 发送 FIM 补全请求
+     * 使用 /beta/completions 端点，支持 prompt + suffix 模式
+     */
+    async fim(
+        options: FIMOptions
+    ): Promise<string> {
+        const apiKey = await DeepSeekConfig.getApiKey();
+        const endpoint = DeepSeekConfig.getCompletionEndpoint();
+        const model = DeepSeekConfig.getModel();
+
+        if (!apiKey) {
+            throw new Error('DeepSeek API 密钥未配置');
+        }
+
+        const url = `${endpoint}/completions`;
+        const maxTokens = options.maxTokens ?? 256;
+        const temperature = options.temperature ?? 0.2;
+
+        const body: Record<string, any> = {
+            model,
+            prompt: options.prompt,
+            max_tokens: maxTokens,
+            temperature,
+            stop: ["\n\n"]
+        };
+        if (options.suffix) {
+            body.suffix = options.suffix;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(body),
+            signal: options.signal
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage: string;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.error?.message || errorText;
+            } catch {
+                errorMessage = errorText;
+            }
+            throw new Error(`DeepSeek FIM API 错误 (${response.status}): ${errorMessage}`);
+        }
+
+        const data = await response.json() as FIMResponse;
+        return data.choices[0]?.text || '';
     }
 
     /**

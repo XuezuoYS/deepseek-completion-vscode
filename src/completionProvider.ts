@@ -139,7 +139,7 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
     }
 
     /**
-     * 获取 AI 补全建议
+     * 获取 AI 补全建议（使用 FIM API）
      */
     private async getCompletion(
         document: vscode.TextDocument,
@@ -149,59 +149,31 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
         const fileKey = `${document.uri.toString()}:${position.line}`;
 
         try {
-            // 获取上下文代码
-            const contextCode = this.extractContext(document, position);
+            // 提取光标前的代码（prompt）和光标后的代码（suffix）
+            const { prefix, suffix } = this.extractFIMContext(document, position);
             const languageId = document.languageId;
-            const filePath = vscode.workspace.asRelativePath(document.uri);
 
-            const systemPrompt = `你是一个智能代码补全助手。你的任务是根据上下文提供精确的代码补全建议。
-
-规则：
-1. 只返回需要补全的代码，不要包含任何解释
-2. 保持代码风格与上下文一致
-3. 补全内容要简洁、准确
-4. 不要重复用户已经输入的代码
-5. 考虑缩进和语法正确性
-6. 关注光标位置的代码逻辑`;
-
-            const prompt = `文件: ${filePath}
-语言: ${languageId}
-
-当前光标在位置 ${position.line + 1}:${position.character + 1}
-
-上下文代码（光标位置用 <CURSOR> 标记）:
-\`\`\`${languageId}
-${contextCode}
-\`\`\`
-
-请生成光标位置之后最合适的代码补全。只返回需要补全的代码部分。`;
-
-            const result = await this.api.chat(
-                [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: prompt }
-                ],
-                {
-                    temperature: 0.2,
-                    maxTokens: 256,
-                    signal
-                }
-            );
+            // 通过 FIM API 获取补全
+            const result = await this.api.fim({
+                prompt: prefix,
+                suffix: suffix || undefined,
+                maxTokens: 256,
+                temperature: 0.2,
+                signal
+            });
 
             if (!result || signal.aborted) {
                 return undefined;
             }
 
-            // 清理结果
+            // 清理结果（移除可能的代码围栏等）
             const cleaned = this.cleanCompletionResult(result, document, position);
 
             if (!cleaned) {
                 return undefined;
             }
 
-            // 计算范围：VS Code 要求 InlineCompletionItem.range 必须在同一行内
-            // 多行 range 会被 VS Code 静默拒绝导致虚影文本无法显示
-            // 使用零长度 range（仅标记插入点），VS Code 会自动在光标位置渲染多行虚影
+            // 使用零长度 range（仅标记插入点），VS Code 自动在光标位置渲染虚影
             const range = new vscode.Range(position, position);
 
             const item = new vscode.InlineCompletionItem(cleaned, range);
@@ -223,35 +195,30 @@ ${contextCode}
     }
 
     /**
-     * 提取光标周围的上下文代码
+     * 提取 FIM 上下文：光标前为 prompt，光标后为 suffix
      */
-    private extractContext(document: vscode.TextDocument, position: vscode.Position): string {
+    private extractFIMContext(
+        document: vscode.TextDocument,
+        position: vscode.Position
+    ): { prefix: string; suffix: string } {
         const maxContextLines = 50;
         const maxPrefixLines = 30;
         const maxSuffixLines = 10;
 
-        // 获取光标前的代码（前缀）
+        // 光标前的代码（前缀）
         const startLine = Math.max(0, position.line - maxPrefixLines);
         const prefixRange = new vscode.Range(startLine, 0, position.line, position.character);
         const prefix = document.getText(prefixRange);
 
-        // 获取光标后的代码（后缀）
+        // 光标后的代码（后缀）
         const endLine = Math.min(document.lineCount - 1, position.line + maxSuffixLines);
-        const suffixRange = new vscode.Range(position.line, position.character, endLine, document.lineAt(endLine).text.length);
+        const suffixRange = new vscode.Range(
+            position.line, position.character,
+            endLine, document.lineAt(endLine).text.length
+        );
         const suffix = document.getText(suffixRange);
 
-        // 截断过长的行
-        const truncateLine = (line: string, maxLen: number = 200): string => {
-            if (line.length > maxLen) {
-                return line.substring(0, maxLen) + ' // ...';
-            }
-            return line;
-        };
-
-        const truncatedPrefix = prefix.split('\n').map(l => truncateLine(l)).join('\n');
-        const truncatedSuffix = suffix.split('\n').map(l => truncateLine(l)).join('\n');
-
-        return `${truncatedPrefix}<CURSOR>${truncatedSuffix}`;
+        return { prefix, suffix };
     }
 
     /**

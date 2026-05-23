@@ -2,7 +2,7 @@
   "name": "deepseek-completion",
   "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "publisher": "deepseek-helper",
   "engines": {
     "vscode": "^1.85.0"
@@ -63,7 +63,12 @@
         "deepseek-completion.apiEndpoint": {
           "type": "string",
           "default": "https://api.deepseek.com",
-          "markdownDescription": "DeepSeek API 端点地址"
+          "markdownDescription": "DeepSeek API 端点地址（用于 Git 提交信息等聊天补全）"
+        },
+        "deepseek-completion.completionEndpoint": {
+          "type": "string",
+          "default": "https://api.deepseek.com/beta",
+          "markdownDescription": "DeepSeek FIM 代码补全端点地址，需使用 Beta 版（用于代码补全）"
         },
         "deepseek-completion.enableCompletion": {
           "type": "boolean",
