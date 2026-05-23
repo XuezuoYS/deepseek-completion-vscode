@@ -64,27 +64,48 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
                     clearTimeout(existingTimer);
                 }
 
+                // 重要：为本次补全创建独立的 AbortController，
+                // 不依赖 VS Code 的 CancellationToken——
+                // 因为防抖期间 token 可能已被 VS Code 取消，
+                // 导致 getCompletion 中的 token.isCancellationRequested 为 true，
+                // 即使 API 请求成功，结果也会被丢弃。
+                const localAbortController = new AbortController();
+                this.requestQueue.set(fileKey, localAbortController);
+
                 const timer = setTimeout(async () => {
                     this.debounceTimers.delete(fileKey);
-                    const result = await this.getCompletion(document, position, token);
+                    // 使用本地 AbortController.signal 替代原 token
+                    const result = await this.getCompletion(document, position, localAbortController.signal);
                     resolve(result);
                 }, delay);
 
                 this.debounceTimers.set(fileKey, timer);
 
-                // 如果 token 被取消，清理定时器
+                // 如果 token 被取消，清理定时器和请求
                 token.onCancellationRequested(() => {
                     const t = this.debounceTimers.get(fileKey);
                     if (t) {
                         clearTimeout(t);
                         this.debounceTimers.delete(fileKey);
                     }
+                    const c = this.requestQueue.get(fileKey);
+                    if (c) {
+                        c.abort();
+                        this.requestQueue.delete(fileKey);
+                    }
                     resolve(undefined);
                 });
             });
         }
 
-        return this.getCompletion(document, position, token);
+        // 手动触发时也使用独立 AbortController
+        const manualAbortController = new AbortController();
+        this.requestQueue.set(fileKey, manualAbortController);
+        token.onCancellationRequested(() => {
+            manualAbortController.abort();
+            this.requestQueue.delete(fileKey);
+        });
+        return this.getCompletion(document, position, manualAbortController.signal);
     }
 
     /**
@@ -93,16 +114,9 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
     private async getCompletion(
         document: vscode.TextDocument,
         position: vscode.Position,
-        token: vscode.CancellationToken
+        signal: AbortSignal
     ): Promise<vscode.InlineCompletionItem[] | undefined> {
-        const abortController = new AbortController();
         const fileKey = `${document.uri.toString()}:${position.line}`;
-        this.requestQueue.set(fileKey, abortController);
-
-        token.onCancellationRequested(() => {
-            abortController.abort();
-            this.requestQueue.delete(fileKey);
-        });
 
         try {
             // 获取上下文代码
@@ -140,11 +154,11 @@ ${contextCode}
                 {
                     temperature: 0.2,
                     maxTokens: 128,
-                    signal: abortController.signal
+                    signal
                 }
             );
 
-            if (!result || token.isCancellationRequested) {
+            if (!result || signal.aborted) {
                 return undefined;
             }
 
@@ -169,7 +183,11 @@ ${contextCode}
             if (error.name === 'AbortError' || error.message?.includes('abort')) {
                 return undefined;
             }
-            // 静默失败，不打扰用户
+            // 非中止类错误：通知用户，方便排查问题
+            const shortMsg = error.message?.length > 120
+                ? error.message.substring(0, 120) + '...'
+                : error.message || '未知错误';
+            vscode.window.showErrorMessage(`🔴 DeepSeek 补全请求失败: ${shortMsg}`);
             return undefined;
         } finally {
             this.requestQueue.delete(fileKey);
