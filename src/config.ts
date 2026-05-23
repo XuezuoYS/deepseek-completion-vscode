@@ -92,6 +92,13 @@ export class DeepSeekConfig {
     }
 
     /**
+     * 是否在 SCM 提交信息输入框中启用代码补全
+     */
+    static isScmCompletionEnabled(): boolean {
+        return vscode.workspace.getConfiguration(this.SECTION).get<boolean>('enableCompletionInScm', false);
+    }
+
+    /**
      * 是否开启思考模式 (reasoning)
      */
     static isThinkingEnabled(): boolean {

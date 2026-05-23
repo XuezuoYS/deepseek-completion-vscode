@@ -2,7 +2,7 @@
   "name": "deepseek-completion",
   "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "xuezuoys-used-ai",
   "engines": {
     "vscode": "^1.85.0"
@@ -93,6 +93,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "启用自动补全（关闭后只能通过快捷键手动触发）"
+        },
+        "deepseek-completion.enableCompletionInScm": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "在 Git 更改栏的提交信息输入框中启用代码补全（默认关闭）"
         },
         "deepseek-completion.model": {
           "type": "string",
