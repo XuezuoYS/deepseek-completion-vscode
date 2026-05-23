@@ -1,5 +1,7 @@
 # deepseek 代码和 git 补全
 
+[Github](https://github.com/XuezuoYS/deepseek-completion-vscode)
+
 **警告：此仓库基本由 Deepseek 大人开发，请谨慎使用**
 
 > ~AI 编程太好用了，已经变成了离开 AI 大人就什么都不会的笨蛋了齁哦哦~
