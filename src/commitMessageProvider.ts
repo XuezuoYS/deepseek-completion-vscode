@@ -40,9 +40,9 @@ export class CommitMessageProvider {
                 return;
             }
 
-            // 显示进度通知
+            // 在 SCM 标题栏显示 VS Code 原生加载动画
             await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
+                location: vscode.ProgressLocation.SourceControl,
                 title: 'DeepSeek 正在生成提交信息...',
                 cancellable: true
             }, async (progress, token) => {
