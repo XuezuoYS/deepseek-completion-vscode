@@ -198,7 +198,7 @@ export class CommitMessageProvider {
 
 要求：
 1. 提交信息格式为：<type>: <description>
-2. 类型包括：feat（新功能）、fix（修复）、docs（文档）、style（样式）、refactor（重构）、ui（用户界面）、perf（性能）、test（测试）、chore（杂项）、ci（CI/CD）
+2. 类型包括：feat（新功能）、fix（修复）、docs（文档）、style（样式）、refactor（重构）、ui（用户界面）、perf（性能）、test（测试）、chore（杂项）、ci（CI/CD）、特殊类型（如 bump version 等）
 3. 第一行是标题，不超过 ${maxLength} 个字符
 4. 如果需要，空一行后添加详细描述
 5. 详细描述说明更改的原因和影响
