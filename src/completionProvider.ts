@@ -34,8 +34,8 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
             return undefined;
         }
 
-        // SCM 提交信息输入框：默认关闭，需单独启用
-        if (document.uri.scheme === 'sourcecontrol' || document.uri.scheme === 'scm' || document.uri.scheme === 'scm-input') {
+        // SCM 提交信息输入框（URI scheme: vscode-scm）：默认关闭，需单独启用
+        if (document.uri.scheme === 'vscode-scm') {
             if (!DeepSeekConfig.isScmCompletionEnabled()) {
                 return undefined;
             }
