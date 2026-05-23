@@ -1,12 +1,12 @@
-# deepseek 代码和 git 补全 🤖
+# deepseek 代码和 git 补全
 
 **警告：此仓库基本由 AI Agent 开发，请谨慎使用**
 
-**deepseek 代码和 git 补全** 是一个 VS Code 扩展，利用 DeepSeek V4 AI 的强大能力，为您提供智能化的 Git 提交信息生成和代码补全功能。
+**deepseek 代码和 git 补全** 是一个 VS Code 扩展，使用 Deepseek V4 提供 Git 提交信息生成和代码补全功能。
 
-## ✨ 功能特性
+## 功能特性
 
-### 📝 智能 Git 提交信息生成
+### 智能 Git 提交信息生成
 
 - 自动分析暂存区文件更改，生成规范的 Git 提交信息
 - 支持 Conventional Commits 规范（feat, fix, refactor 等类型）
@@ -14,51 +14,39 @@
 - 支持 emoji 前缀（如 ✨, 🐛, 📝）
 - 在源代码管理视图直接触发，一键生成
 
-### 💡 AI 代码补全
+### AI 代码补全
 
 - 基于 DeepSeek 的智能代码补全建议
 - 自动分析上下文代码，提供精准的补全
 - 支持所有编程语言
 - 可调节触发延迟，避免过度请求
 
-### 📋 提交解释
+### 提交解释
 
 - 选择历史提交，DeepSeek 会为您详细解释其变更内容
 
-## 🚀 快速开始
+## 使用
 
-### 1. 安装扩展
+### API 密钥
 
-在 VS Code 扩展商店搜索 "deepseek 代码和 git 补全" 或手动安装 VSIX 文件。
+> 密钥通过 **操作系统凭据管理器** 加密存储（Windows 凭据管理器 / macOS Keychain），不会保存在 settings.json 中，也不会随 VS Code 设置同步。
 
-### 2. 配置 API 密钥
-
-> 🔐 密钥通过 **操作系统凭据管理器** 加密存储（Windows 凭据管理器 / macOS Keychain），不会保存在 settings.json 中，也不会随 VS Code 设置同步。
-
-1. 前往 [DeepSeek 平台](https://platform.deepseek.com/) 注册并获取 API 密钥
-2. 在 VS Code 中按 `Ctrl+Shift+P` 打开命令面板
-3. 执行 `DeepSeek: 设置 API 密钥`
-4. 在弹出的密码框中粘贴您的密钥
-
-或者在设置页中操作：
+在设置页中操作：
 1. 打开设置 `Ctrl+,`，搜索 `deepseek-completion`
 2. 在 `Api Key Status` 项中点击 **🔑 设置 API 密钥** 链接
 
-### 3. 开始使用
+### 生成提交信息
 
-#### 生成提交信息
+1. 暂存更改（若无暂存则自动使用未暂存的更改）
+2. 在源代码管理视图（`Ctrl + Shift + G`）的工具栏点击 ✨ 按钮
+3. 或使用快捷键 `Ctrl + Shift + G` 然后按 `C`
+4. 或者在命令面板（`Ctrl + Shift + P`）中执行 `DeepSeek: 生成 Git 提交信息`
 
-1. 在项目中做代码更改
-2. 使用 `git add` 暂存更改（若无暂存则自动使用未暂存的更改）
-3. 在源代码管理视图（`Ctrl + Shift + G`）的工具栏点击 ✨ 按钮
-4. 或使用快捷键 `Ctrl + Shift + G` 然后按 `C`
-5. 或者在命令面板（`Ctrl + Shift + P`）中执行 `DeepSeek: 生成 Git 提交信息`
+### 代码补全
 
-#### 代码补全
+只需正常编写代码，DeepSeek 会在您输入时自动提供补全建议，按 `Tab` 接受建议，或使用`Alt+\`手动触发。
 
-只需正常编写代码，DeepSeek 会在您输入时自动提供补全建议，按 `Tab` 接受建议。
-
-## ⚙️ 配置选项
+## 配置选项
 
 | 设置项 | 描述 | 默认值 |
 |--------|------|--------|
@@ -69,12 +57,12 @@
 | `deepseek-completion.enableThinking` | 开启思考模式（展示内部推理过程） | `false` |
 | `deepseek-completion.maxTokens` | 最大生成 token 数 | `4096` |
 | `deepseek-completion.temperature` | 生成温度 (0.0 - 2.0) | `0.8` |
-| `deepseek-completion.completionDelay` | 补全触发延迟 (毫秒) | `500` |
+| `deepseek-completion.completionDelay` | 补全触发延迟 (毫秒) | `50` |
 | `deepseek-completion.commitLanguage` | 提交信息语言 (auto/zh-CN/en) | `auto` |
 | `deepseek-completion.commitEmoji` | 使用 emoji 前缀 | `false` |
 | `deepseek-completion.commitMaxLength` | 提交信息标题最大字符数 | `72` |
 
-## 🎯 命令
+## 命令
 
 | 命令 | 描述 | 快捷键 |
 |------|------|--------|
@@ -82,7 +70,7 @@
 | `DeepSeek: 为暂存更改生成提交信息` | 同上（显式命令） | - |
 | `DeepSeek: 解释所选提交` | 解释历史提交的内容 | - |
 
-## 🔧 技术实现
+## 技术实现
 
 - 使用 VS Code 的 `InlineCompletionItemProvider` API 实现代码补全
 - 使用 Git 扩展 API 获取暂存区更改和提交历史
@@ -90,7 +78,7 @@
 - 请求防抖和取消机制避免资源浪费
 - 使用 `SecretStorage` API 安全存储 API 密钥（系统凭据管理器）
 
-## 🏗️ 从源码构建
+## 从源码构建
 
 克隆仓库后，按以下步骤构建和打包：
 
@@ -154,8 +142,8 @@ deepseek-completion/
 | `*.vsix` | ❌ 否 | 安装包，`vsce package` 生成 |
 | `package-lock.json` | ✅ 是 | 锁定精确版本，保证可复现构建 |
 
-> 💡 **可复现构建**：克隆仓库后，只需依次执行 `npm ci` → `npm run compile` → `npx @vscode/vsce package` 即可从源码生成完全一致的 VSIX 安装包。
+> **可复现构建**：克隆仓库后，只需依次执行 `npm ci` → `npm run compile` → `npx @vscode/vsce package` 即可从源码生成完全一致的 VSIX 安装包。
 
-## 📄 许可证
+## 许可证
 
 MIT License
