@@ -10,6 +10,7 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
     private api: DeepSeekAPI;
     private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
     private requestQueue: Map<string, AbortController> = new Map();
+    private apiKeyWarningShown = false;
 
     constructor() {
         this.api = new DeepSeekAPI();
@@ -31,8 +32,23 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
 
         const apiKey = await DeepSeekConfig.getApiKey();
         if (!apiKey) {
+            // 仅提示一次，避免每次触发补全都弹出错误
+            if (!this.apiKeyWarningShown) {
+                this.apiKeyWarningShown = true;
+                const setNow = '设置 API 密钥';
+                vscode.window.showWarningMessage(
+                    '⚠️ DeepSeek API 密钥未配置，代码补全无法使用。',
+                    setNow
+                ).then(selection => {
+                    if (selection === setNow) {
+                        vscode.commands.executeCommand('deepseek-completion.setApiKey');
+                    }
+                });
+            }
             return undefined;
         }
+        // 密钥已配置，重置提示标志
+        this.apiKeyWarningShown = false;
 
         // 只有在用户主动触发或输入时提供补全
         if (context.triggerKind === vscode.InlineCompletionTriggerKind.Automatic) {
@@ -176,12 +192,10 @@ ${contextCode}
                 return undefined;
             }
 
-            // 计算范围: 从当前行光标位置到建议的最后
-            const lines = cleaned.split('\n');
-            const range = new vscode.Range(
-                position,
-                position.translate(lines.length - 1, lines[lines.length - 1].length)
-            );
+            // 计算范围：VS Code 要求 InlineCompletionItem.range 必须在同一行内
+            // 多行 range 会被 VS Code 静默拒绝导致虚影文本无法显示
+            // 使用零长度 range（仅标记插入点），VS Code 会自动在光标位置渲染多行虚影
+            const range = new vscode.Range(position, position);
 
             const item = new vscode.InlineCompletionItem(cleaned, range);
             return [item];
