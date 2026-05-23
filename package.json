@@ -1,6 +1,6 @@
 {
-  "name": "deepseek-for-vscode",
-  "displayName": "DeepSeek 助手",
+  "name": "deepseek-code-git-completion",
+  "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
   "version": "0.1.0",
   "publisher": "deepseek-helper",
