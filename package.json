@@ -2,7 +2,7 @@
   "name": "deepseek-completion",
   "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publisher": "deepseek-helper",
   "engines": {
     "vscode": "^1.85.0"
@@ -126,6 +126,11 @@
           "minimum": 30,
           "maximum": 200,
           "markdownDescription": "提交信息标题的最大字符数"
+        },
+        "deepseek-completion.triggerKey": {
+          "type": "string",
+          "default": "alt+\\",
+          "markdownDescription": "| | |\n|---|---|\n| 快捷键 | 自定义主动补全触发快捷键，修改后需重启生效 |\n| 默认值 | `alt+\\` |\n| 自定义 | 在 [键盘快捷键](command:workbench.action.openGlobalKeybindings) 中搜索 `DeepSeek: 触发代码补全` 进行修改 |"
         }
       }
     },
@@ -176,6 +181,10 @@
         {
           "command": "deepseek-completion.clearApiKey",
           "when": "true"
+        },
+        {
+          "command": "deepseek-completion.triggerCompletion",
+          "when": "editorTextFocus && !editorReadonly"
         }
       ]
     },
@@ -184,6 +193,11 @@
         "command": "deepseek-completion.generateCommitMessage",
         "key": "ctrl+shift+g c",
         "when": "gitOpenRepositoryCount != 0"
+      },
+      {
+        "command": "deepseek-completion.triggerCompletion",
+        "key": "alt+\\",
+        "when": "editorTextFocus && !editorReadonly"
       }
     ]
   },

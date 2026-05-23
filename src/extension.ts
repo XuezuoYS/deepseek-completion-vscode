@@ -109,6 +109,14 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // 注册自定义主动补全触发命令，用户可在键盘快捷键中自由绑定
+    const triggerCompletionCommand = vscode.commands.registerCommand(
+        'deepseek-completion.triggerCompletion',
+        () => {
+            vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+        }
+    );
+
     // 注册解释提交命令（用于右键菜单）
     const explainCommitCommand = vscode.commands.registerCommand(
         'deepseek-completion.explainCommit',
@@ -124,6 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
         explainCommitCommand,
         setApiKeyCommand,
         clearApiKeyCommand,
+        triggerCompletionCommand,
         completionRegistration,
         configChangeListener,
         openSettingsCommand,
