@@ -46,6 +46,13 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
             }
         }
 
+        // 触发补全时给用户可见提示（调试用途）
+        const triggerKindLabel = context.triggerKind === vscode.InlineCompletionTriggerKind.Automatic ? '自动' : '手动';
+        vscode.window.setStatusBarMessage(
+            `$(sparkle) DeepSeek 补全已触发（${triggerKindLabel}）行 ${position.line + 1}`,
+            2000
+        );
+
         // 生成文件唯一键用于去重
         const fileKey = `${document.uri.toString()}:${position.line}`;
 
