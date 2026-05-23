@@ -204,22 +204,33 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
         document: vscode.TextDocument,
         position: vscode.Position
     ): { prefix: string; suffix: string } {
-        const maxContextLines = 50;
-        const maxPrefixLines = 30;
-        const maxSuffixLines = 10;
+        const maxPrefixLines = DeepSeekConfig.getContextPrefixLines();
+        const maxSuffixLines = DeepSeekConfig.getContextSuffixLines();
 
-        // 光标前的代码（前缀）
-        const startLine = Math.max(0, position.line - maxPrefixLines);
-        const prefixRange = new vscode.Range(startLine, 0, position.line, position.character);
-        const prefix = document.getText(prefixRange);
+        // 光标前的代码（前缀）：0=整个文件
+        let prefix: string;
+        if (maxPrefixLines === 0) {
+            prefix = document.getText(new vscode.Range(0, 0, position.line, position.character));
+        } else {
+            const startLine = Math.max(0, position.line - maxPrefixLines);
+            prefix = document.getText(new vscode.Range(startLine, 0, position.line, position.character));
+        }
 
-        // 光标后的代码（后缀）
-        const endLine = Math.min(document.lineCount - 1, position.line + maxSuffixLines);
-        const suffixRange = new vscode.Range(
-            position.line, position.character,
-            endLine, document.lineAt(endLine).text.length
-        );
-        const suffix = document.getText(suffixRange);
+        // 光标后的代码（后缀）：0=整个文件
+        let suffix: string;
+        if (maxSuffixLines === 0) {
+            const lastLine = document.lineCount - 1;
+            suffix = document.getText(new vscode.Range(
+                position.line, position.character,
+                lastLine, document.lineAt(lastLine).text.length
+            ));
+        } else {
+            const endLine = Math.min(document.lineCount - 1, position.line + maxSuffixLines);
+            suffix = document.getText(new vscode.Range(
+                position.line, position.character,
+                endLine, document.lineAt(endLine).text.length
+            ));
+        }
 
         return { prefix, suffix };
     }

@@ -106,6 +106,20 @@ export class DeepSeekConfig {
     }
 
     /**
+     * 获取代码补全上下文光标前最大行数（0=整个文件）
+     */
+    static getContextPrefixLines(): number {
+        return vscode.workspace.getConfiguration(this.SECTION).get<number>('contextPrefixLines', 50);
+    }
+
+    /**
+     * 获取代码补全上下文光标后最大行数（0=整个文件）
+     */
+    static getContextSuffixLines(): number {
+        return vscode.workspace.getConfiguration(this.SECTION).get<number>('contextSuffixLines', 10);
+    }
+
+    /**
      * 获取提交信息语言
      */
     static getCommitLanguage(): string {
