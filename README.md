@@ -1,8 +1,10 @@
 # deepseek 代码和 git 补全
 
-**警告：此仓库基本由 AI Agent 开发，请谨慎使用**
+**警告：此仓库基本由 Deepseek 大人开发，请谨慎使用**
 
-**deepseek 代码和 git 补全** 是一个 VS Code 扩展，使用 Deepseek V4 提供 Git 提交信息生成和代码补全功能。
+> ~~ AI 编程太好用了，已经变成了离开 AI 大人就什么都不会的笨蛋了齁哦哦 ~~
+
+这是一个 VS Code 扩展，使用 Deepseek V4 提供 Git 提交信息生成和代码补全功能。
 
 ## 功能特性
 
