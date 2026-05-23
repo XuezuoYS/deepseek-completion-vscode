@@ -2,7 +2,7 @@
   "name": "deepseek-code-git-completion",
   "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "deepseek-helper",
   "engines": {
     "vscode": "^1.85.0"
@@ -27,35 +27,36 @@
   "contributes": {
     "commands": [
       {
-        "command": "deepseek.generateCommitMessage",
+        "command": "deepseek-completion.generateCommitMessage",
         "title": "DeepSeek: 生成 Git 提交信息",
-        "icon": "$(git-commit)"
+        "icon": "$(sparkle)"
       },
       {
-        "command": "deepseek.generateCommitMessageStaged",
+        "command": "deepseek-completion.generateCommitMessageStaged",
         "title": "DeepSeek: 为暂存更改生成提交信息"
       },
       {
-        "command": "deepseek.explainCommit",
+        "command": "deepseek-completion.explainCommit",
         "title": "DeepSeek: 解释所选提交"
+      },
+      {
+        "command": "deepseek-completion.setApiKey",
+        "title": "DeepSeek: 设置 API 密钥"
+      },
+      {
+        "command": "deepseek-completion.clearApiKey",
+        "title": "DeepSeek: 清除 API 密钥"
       }
     ],
     "configuration": {
-      "title": "deepseek 代码和 git 补全",
+      "title": "Deepseek-Completion",
       "properties": {
-        "deepseek.apiKey": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "DeepSeek API 密钥。可从 [DeepSeek 平台](https://platform.deepseek.com/) 获取。",
-          "pattern": "^(sk-)?[a-zA-Z0-9]{32,}$",
-          "patternErrorMessage": "请输入有效的 DeepSeek API 密钥"
-        },
-        "deepseek.apiEndpoint": {
+        "deepseek-completion.apiEndpoint": {
           "type": "string",
           "default": "https://api.deepseek.com",
           "markdownDescription": "DeepSeek API 端点地址"
         },
-        "deepseek.model": {
+        "deepseek-completion.model": {
           "type": "string",
           "default": "deepseek-v4-flash",
           "enum": [
@@ -68,38 +69,38 @@
           ],
           "markdownDescription": "DeepSeek V4 模型选择。Flash 速度快、性价比高；Pro 推理能力更强。"
         },
-        "deepseek.enableThinking": {
+        "deepseek-completion.enableThinking": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "开启思考模式（reasoning）"
         },
-        "deepseek.maxTokens": {
+        "deepseek-completion.maxTokens": {
           "type": "number",
           "default": 4096,
           "minimum": 128,
           "maximum": 32768,
           "markdownDescription": "生成回复的最大 token 数"
         },
-        "deepseek.temperature": {
+        "deepseek-completion.temperature": {
           "type": "number",
           "default": 0.8,
           "minimum": 0.0,
           "maximum": 2.0,
           "markdownDescription": "生成温度 (0.0 - 2.0)。较高的值会使输出更随机。"
         },
-        "deepseek.enableCompletion": {
+        "deepseek-completion.enableCompletion": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "启用 DeepSeek 代码补全"
         },
-        "deepseek.completionDelay": {
+        "deepseek-completion.completionDelay": {
           "type": "number",
           "default": 500,
           "minimum": 100,
           "maximum": 5000,
           "markdownDescription": "代码补全触发延迟（毫秒）"
         },
-        "deepseek.commitLanguage": {
+        "deepseek-completion.commitLanguage": {
           "type": "string",
           "default": "auto",
           "enum": [
@@ -109,12 +110,12 @@
           ],
           "markdownDescription": "提交信息的语言"
         },
-        "deepseek.commitEmoji": {
+        "deepseek-completion.commitEmoji": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "在提交信息中使用 emoji 前缀（如 🐛 修复bug）"
         },
-        "deepseek.commitMaxLength": {
+        "deepseek-completion.commitMaxLength": {
           "type": "number",
           "default": 72,
           "minimum": 30,
@@ -126,43 +127,56 @@
     "menus": {
       "scm/title": [
         {
-          "command": "deepseek.generateCommitMessage",
+          "command": "deepseek-completion.generateCommitMessage",
+          "group": "navigation",
+          "when": "scmProvider == git"
+        },
+        {
+          "command": "deepseek-completion.generateCommitMessage",
           "group": "1_modification",
           "when": "scmProvider == git"
         }
       ],
       "scm/sourceControl": [
         {
-          "command": "deepseek.generateCommitMessage",
+          "command": "deepseek-completion.generateCommitMessage",
           "group": "inline",
           "when": "scmProvider == git"
         }
       ],
       "scm/resourceGroup/context": [
         {
-          "command": "deepseek.generateCommitMessage",
+          "command": "deepseek-completion.generateCommitMessage",
           "group": "1_modification",
           "when": "scmProvider == git"
         }
       ],
       "commandPalette": [
         {
-          "command": "deepseek.generateCommitMessage",
+          "command": "deepseek-completion.generateCommitMessage",
           "when": "gitOpenRepositoryCount != 0"
         },
         {
-          "command": "deepseek.generateCommitMessageStaged",
+          "command": "deepseek-completion.generateCommitMessageStaged",
           "when": "gitOpenRepositoryCount != 0"
         },
         {
-          "command": "deepseek.explainCommit",
+          "command": "deepseek-completion.explainCommit",
           "when": "false"
+        },
+        {
+          "command": "deepseek-completion.setApiKey",
+          "when": "true"
+        },
+        {
+          "command": "deepseek-completion.clearApiKey",
+          "when": "true"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "deepseek.generateCommitMessage",
+        "command": "deepseek-completion.generateCommitMessage",
         "key": "ctrl+shift+g c",
         "when": "gitOpenRepositoryCount != 0"
       }

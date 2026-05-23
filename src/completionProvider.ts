@@ -29,7 +29,7 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
             return undefined;
         }
 
-        const apiKey = DeepSeekConfig.getApiKey();
+        const apiKey = await DeepSeekConfig.getApiKey();
         if (!apiKey) {
             return undefined;
         }

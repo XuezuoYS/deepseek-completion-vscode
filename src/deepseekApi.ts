@@ -41,7 +41,7 @@ export class DeepSeekAPI {
             signal?: AbortSignal;
         }
     ): Promise<string> {
-        const apiKey = DeepSeekConfig.getApiKey();
+        const apiKey = await DeepSeekConfig.getApiKey();
         const endpoint = DeepSeekConfig.getApiEndpoint();
         const model = DeepSeekConfig.getModel();
 

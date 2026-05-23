@@ -9,19 +9,61 @@ import { DeepSeekConfig } from './config';
 export function activate(context: vscode.ExtensionContext) {
     console.log('DeepSeek 助手扩展已激活');
 
+    // 初始化安全存储
+    DeepSeekConfig.initialize(context.secrets);
+
+    // 注册设置 API 密钥命令
+    const setApiKeyCommand = vscode.commands.registerCommand(
+        'deepseek-completion.setApiKey',
+        async () => {
+            const key = await vscode.window.showInputBox({
+                prompt: '请输入 DeepSeek API 密钥',
+                password: true,
+                ignoreFocusOut: true,
+                placeHolder: 'sk-xxx...',
+                validateInput: (value: string) => {
+                    if (!value || value.trim().length === 0) {
+                        return 'API 密钥不能为空';
+                    }
+                    return null;
+                }
+            });
+            if (key) {
+                await DeepSeekConfig.setApiKey(key.trim());
+                vscode.window.showInformationMessage('✅ DeepSeek API 密钥已安全存储');
+            }
+        }
+    );
+
+    // 注册清除 API 密钥命令
+    const clearApiKeyCommand = vscode.commands.registerCommand(
+        'deepseek-completion.clearApiKey',
+        async () => {
+            const confirm = await vscode.window.showWarningMessage(
+                '确定要清除 DeepSeek API 密钥吗？',
+                { modal: true },
+                '确定'
+            );
+            if (confirm === '确定') {
+                await DeepSeekConfig.clearApiKey();
+                vscode.window.showInformationMessage('DeepSeek API 密钥已清除');
+            }
+        }
+    );
+
     // 初始化提交信息提供器
     const commitProvider = new CommitMessageProvider();
 
     // 注册生成提交信息命令
     const generateCommitCommand = vscode.commands.registerCommand(
-        'deepseek.generateCommitMessage',
+        'deepseek-completion.generateCommitMessage',
         async () => {
             await commitProvider.generateCommitMessage();
         }
     );
 
     const generateCommitStagedCommand = vscode.commands.registerCommand(
-        'deepseek.generateCommitMessageStaged',
+        'deepseek-completion.generateCommitMessageStaged',
         async () => {
             await commitProvider.generateCommitMessage();
         }
@@ -36,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 监听配置变化
     const configChangeListener = vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration('deepseek')) {
+        if (e.affectsConfiguration('deepseek-completion')) {
             console.log('DeepSeek 配置已更新');
         }
     });
@@ -49,25 +91,25 @@ export function activate(context: vscode.ExtensionContext) {
     statusBarItem.text = "$(symbol-key) DeepSeek";
     statusBarItem.tooltip = "DeepSeek 助手已激活";
     statusBarItem.command = {
-        command: 'deepseek.openSettings',
+        command: 'deepseek-completion.openSettings',
         title: '打开 DeepSeek 设置'
     };
     statusBarItem.show();
 
     // 注册打开设置命令
     const openSettingsCommand = vscode.commands.registerCommand(
-        'deepseek.openSettings',
+        'deepseek-completion.openSettings',
         () => {
             vscode.commands.executeCommand(
                 'workbench.action.openSettings',
-                'deepseek'
+                'deepseek-completion'
             );
         }
     );
 
     // 注册解释提交命令（用于右键菜单）
     const explainCommitCommand = vscode.commands.registerCommand(
-        'deepseek.explainCommit',
+        'deepseek-completion.explainCommit',
         async () => {
             await explainSelectedCommit();
         }
@@ -78,6 +120,8 @@ export function activate(context: vscode.ExtensionContext) {
         generateCommitCommand,
         generateCommitStagedCommand,
         explainCommitCommand,
+        setApiKeyCommand,
+        clearApiKeyCommand,
         completionRegistration,
         configChangeListener,
         openSettingsCommand,
@@ -86,9 +130,11 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // 检查 API 密钥是否配置
-    if (!DeepSeekConfig.getApiKey()) {
-        showSetupGuide();
-    }
+    DeepSeekConfig.getApiKey().then((key) => {
+        if (!key) {
+            showSetupGuide();
+        }
+    });
 }
 
 /**
@@ -153,7 +199,7 @@ async function explainSelectedCommit(): Promise<void> {
         
         // 在编辑器中显示解释
         const panel = vscode.window.createWebviewPanel(
-            'deepseekCommitExplain',
+            'deepseek-completion.commitExplain',
             `提交解释: ${selected.label}`,
             vscode.ViewColumn.Beside,
             { enableScripts: true }
@@ -261,12 +307,12 @@ async function explainSelectedCommit(): Promise<void> {
  */
 function showSetupGuide(): void {
     vscode.window.showInformationMessage(
-        'DeepSeek 助手需要配置 API 密钥才能使用。',
-        '去设置',
+        'DeepSeek 助手需要配置 API 密钥才能使用。密钥将通过系统凭据管理器安全存储。',
+        '设置密钥',
         '获取 API 密钥'
     ).then(async (selection) => {
-        if (selection === '去设置') {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'deepseek.apiKey');
+        if (selection === '设置密钥') {
+            vscode.commands.executeCommand('deepseek-completion.setApiKey');
         } else if (selection === '获取 API 密钥') {
             vscode.env.openExternal(
                 vscode.Uri.parse('https://platform.deepseek.com/api_keys')

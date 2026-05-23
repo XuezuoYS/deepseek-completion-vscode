@@ -18,7 +18,7 @@ export class CommitMessageProvider {
      * 生成提交信息
      */
     async generateCommitMessage(): Promise<void> {
-        const validation = DeepSeekConfig.validateConfig();
+        const validation = await DeepSeekConfig.validateConfig();
         if (!validation.valid) {
             vscode.window.showErrorMessage(validation.message!, { modal: true });
             return;
@@ -127,12 +127,19 @@ export class CommitMessageProvider {
     /**
      * 获取最近的提交历史
      */
-    private async getRecentCommits(repository: any, count: number = 5): Promise<string> {
+    private async getRecentCommits(repository: any, count: number = 3): Promise<string> {
         try {
             const commits = await repository.log({ maxEntries: count });
-            return commits.map((commit: any) => 
-                `- ${commit.message.split('\n')[0]}`
-            ).join('\n');
+            return commits.map((commit: any, index: number) => {
+                const lines = commit.message.trim().split('\n');
+                const title = lines[0];
+                const body = lines.slice(1).filter((l: string) => l.trim()).join('\n');
+                let entry = `提交 ${index + 1}: ${title}`;
+                if (body) {
+                    entry += `\n   详细: ${body.substring(0, 200)}`;
+                }
+                return entry;
+            }).join('\n\n');
         } catch {
             return '';
         }
@@ -184,14 +191,15 @@ export class CommitMessageProvider {
 
 要求：
 1. 提交信息格式为：<type>: <description>
-2. 类型包括：feat（新功能）、fix（修复）、docs（文档）、style（样式）、refactor（重构）、perf（性能）、test（测试）、chore（杂项）、ci（CI/CD）
+2. 类型包括：feat（新功能）、fix（修复）、docs（文档）、style（样式）、refactor（重构）、ui（用户界面）、perf（性能）、test（测试）、chore（杂项）、ci（CI/CD）
 3. 第一行是标题，不超过 ${maxLength} 个字符
 4. 如果需要，空一行后添加详细描述
 5. 详细描述说明更改的原因和影响
 6. ${langInstruction}
 7. ${emojiInstruction}
 8. 分析更改的文件名和代码差异来理解更改的意图
-9. 不要包含无意义的描述${autoAddNote}`;
+9. 不要包含无意义的描述
+10. **最重要的是：仔细分析下面提供的最近提交历史，严格模仿其措辞风格、详细程度、标点使用、大小写习惯和整体格式**${autoAddNote}`;
     }
 
     /**
@@ -199,7 +207,7 @@ export class CommitMessageProvider {
      */
     private buildCommitPrompt(diff: string, recentCommits: string, changeType: string = '暂存'): string {
         const recentCommitsSection = recentCommits 
-            ? `\n\n以下是最近的提交历史，请保持风格一致：\n${recentCommits}`
+            ? `\n\n以下是最近的提交历史，请仔细分析它们的风格（措辞、语气、详略、格式），并严格按照此风格生成新的提交信息：\n${recentCommits}`
             : '';
 
         return `请分析以下${changeType}的代码更改，生成一条规范的 Git 提交信息。\n\n\`\`\`diff\n${diff}\n\`\`\`${recentCommitsSection}`;

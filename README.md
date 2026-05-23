@@ -33,7 +33,7 @@
 
 1. 前往 [DeepSeek 平台](https://platform.deepseek.com/) 注册并获取 API 密钥
 2. 在 VS Code 中打开设置（`Ctrl + ,`）
-3. 搜索 `deepseek.apiKey`
+3. 搜索 `deepseek-completion.apiKey`
 4. 输入您的 API 密钥
 
 ### 3. 开始使用
@@ -54,17 +54,17 @@
 
 | 设置项 | 描述 | 默认值 |
 |--------|------|--------|
-| `deepseek.apiKey` | DeepSeek API 密钥 | `""` |
-| `deepseek.apiEndpoint` | API 端点地址 | `https://api.deepseek.com` |
-| `deepseek.model` | 模型选择 (deepseek-v4-flash / deepseek-v4-pro) | `deepseek-v4-flash` |
-| `deepseek.enableThinking` | 开启思考模式（展示内部推理过程） | `false` |
-| `deepseek.maxTokens` | 最大生成 token 数 | `4096` |
-| `deepseek.temperature` | 生成温度 (0.0 - 2.0) | `0.8` |
-| `deepseek.enableCompletion` | 启用代码补全 | `true` |
-| `deepseek.completionDelay` | 补全触发延迟 (毫秒) | `500` |
-| `deepseek.commitLanguage` | 提交信息语言 (auto/zh-CN/en) | `auto` |
-| `deepseek.commitEmoji` | 使用 emoji 前缀 | `false` |
-| `deepseek.commitMaxLength` | 提交信息标题最大字符数 | `72` |
+| `deepseek-completion.apiKey` | DeepSeek API 密钥 | `""` |
+| `deepseek-completion.apiEndpoint` | API 端点地址 | `https://api.deepseek.com` |
+| `deepseek-completion.model` | 模型选择 (deepseek-v4-flash / deepseek-v4-pro) | `deepseek-v4-flash` |
+| `deepseek-completion.enableThinking` | 开启思考模式（展示内部推理过程） | `false` |
+| `deepseek-completion.maxTokens` | 最大生成 token 数 | `4096` |
+| `deepseek-completion.temperature` | 生成温度 (0.0 - 2.0) | `0.8` |
+| `deepseek-completion.enableCompletion` | 启用代码补全 | `true` |
+| `deepseek-completion.completionDelay` | 补全触发延迟 (毫秒) | `500` |
+| `deepseek-completion.commitLanguage` | 提交信息语言 (auto/zh-CN/en) | `auto` |
+| `deepseek-completion.commitEmoji` | 使用 emoji 前缀 | `false` |
+| `deepseek-completion.commitMaxLength` | 提交信息标题最大字符数 | `72` |
 
 ## 🎯 命令
 
