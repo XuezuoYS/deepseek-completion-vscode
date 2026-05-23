@@ -1,0 +1,161 @@
+{
+  "name": "deepseek-for-vscode",
+  "displayName": "DeepSeek 助手",
+  "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
+  "version": "0.1.0",
+  "publisher": "deepseek-helper",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "deepseek",
+    "ai",
+    "git",
+    "commit",
+    "completion",
+    "code completion"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "deepseek.generateCommitMessage",
+        "title": "DeepSeek: 生成 Git 提交信息"
+      },
+      {
+        "command": "deepseek.generateCommitMessageStaged",
+        "title": "DeepSeek: 为暂存更改生成提交信息"
+      },
+      {
+        "command": "deepseek.explainCommit",
+        "title": "DeepSeek: 解释所选提交"
+      }
+    ],
+    "configuration": {
+      "title": "DeepSeek 助手",
+      "properties": {
+        "deepseek.apiKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "DeepSeek API 密钥。可从 [DeepSeek 平台](https://platform.deepseek.com/) 获取。",
+          "pattern": "^(sk-)?[a-zA-Z0-9]{32,}$",
+          "patternErrorMessage": "请输入有效的 DeepSeek API 密钥"
+        },
+        "deepseek.apiEndpoint": {
+          "type": "string",
+          "default": "https://api.deepseek.com",
+          "markdownDescription": "DeepSeek API 端点地址"
+        },
+        "deepseek.model": {
+          "type": "string",
+          "default": "deepseek-chat",
+          "enum": [
+            "deepseek-chat",
+            "deepseek-reasoner"
+          ],
+          "markdownDescription": "DeepSeek 模型选择"
+        },
+        "deepseek.maxTokens": {
+          "type": "number",
+          "default": 2048,
+          "minimum": 128,
+          "maximum": 8192,
+          "markdownDescription": "生成回复的最大 token 数"
+        },
+        "deepseek.temperature": {
+          "type": "number",
+          "default": 0.8,
+          "minimum": 0.0,
+          "maximum": 2.0,
+          "markdownDescription": "生成温度 (0.0 - 2.0)。较高的值会使输出更随机。"
+        },
+        "deepseek.enableCompletion": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "启用 DeepSeek 代码补全"
+        },
+        "deepseek.completionDelay": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 5000,
+          "markdownDescription": "代码补全触发延迟（毫秒）"
+        },
+        "deepseek.commitLanguage": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "zh-CN",
+            "en"
+          ],
+          "markdownDescription": "提交信息的语言"
+        },
+        "deepseek.commitEmoji": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "在提交信息中使用 emoji 前缀（如 🐛 修复bug）"
+        },
+        "deepseek.commitMaxLength": {
+          "type": "number",
+          "default": 72,
+          "minimum": 30,
+          "maximum": 200,
+          "markdownDescription": "提交信息标题的最大字符数"
+        }
+      }
+    },
+    "menus": {
+      "scm/title": [
+        {
+          "command": "deepseek.generateCommitMessage",
+          "group": "1_modification",
+          "when": "scmProvider == git"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "deepseek.generateCommitMessage",
+          "when": "gitOpenRepositoryCount != 0"
+        },
+        {
+          "command": "deepseek.generateCommitMessageStaged",
+          "when": "gitOpenRepositoryCount != 0"
+        },
+        {
+          "command": "deepseek.explainCommit",
+          "when": "false"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "deepseek.generateCommitMessage",
+        "key": "ctrl+shift+g c",
+        "when": "gitOpenRepositoryCount != 0"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}
