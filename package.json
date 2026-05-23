@@ -28,7 +28,8 @@
     "commands": [
       {
         "command": "deepseek.generateCommitMessage",
-        "title": "DeepSeek: 生成 Git 提交信息"
+        "title": "DeepSeek: 生成 Git 提交信息",
+        "icon": "$(git-commit)"
       },
       {
         "command": "deepseek.generateCommitMessageStaged",
@@ -56,18 +57,27 @@
         },
         "deepseek.model": {
           "type": "string",
-          "default": "deepseek-chat",
+          "default": "deepseek-v4-flash",
           "enum": [
-            "deepseek-chat",
-            "deepseek-reasoner"
+            "deepseek-v4-flash",
+            "deepseek-v4-pro"
           ],
-          "markdownDescription": "DeepSeek 模型选择"
+          "enumDescriptions": [
+            "DeepSeek V4 Flash（快速响应，性价比之选，默认推荐）",
+            "DeepSeek V4 Pro（更强推理能力，适合复杂任务）"
+          ],
+          "markdownDescription": "DeepSeek V4 模型选择。Flash 速度快、性价比高；Pro 推理能力更强。"
+        },
+        "deepseek.enableThinking": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "开启思考模式（reasoning）。启用后模型会展示内部思考过程，适合需要深度推理的场景。"
         },
         "deepseek.maxTokens": {
           "type": "number",
-          "default": 2048,
+          "default": 4096,
           "minimum": 128,
-          "maximum": 8192,
+          "maximum": 32768,
           "markdownDescription": "生成回复的最大 token 数"
         },
         "deepseek.temperature": {
@@ -115,6 +125,20 @@
     },
     "menus": {
       "scm/title": [
+        {
+          "command": "deepseek.generateCommitMessage",
+          "group": "1_modification",
+          "when": "scmProvider == git"
+        }
+      ],
+      "scm/sourceControl": [
+        {
+          "command": "deepseek.generateCommitMessage",
+          "group": "inline",
+          "when": "scmProvider == git"
+        }
+      ],
+      "scm/resourceGroup/context": [
         {
           "command": "deepseek.generateCommitMessage",
           "group": "1_modification",

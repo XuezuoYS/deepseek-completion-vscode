@@ -1,6 +1,6 @@
-# DeepSeek 助手 🤖
+# deepseek 代码和 git 补全 🤖
 
-**DeepSeek 助手** 是一个 VS Code 扩展，利用 DeepSeek AI 的强大能力，为您提供智能化的 Git 提交信息生成和代码补全功能。
+**deepseek 代码和 git 补全** 是一个 VS Code 扩展，利用 DeepSeek V4 AI 的强大能力，为您提供智能化的 Git 提交信息生成和代码补全功能。
 
 ## ✨ 功能特性
 
@@ -27,7 +27,7 @@
 
 ### 1. 安装扩展
 
-在 VS Code 扩展商店搜索 "DeepSeek 助手" 或手动安装 VSIX 文件。
+在 VS Code 扩展商店搜索 "deepseek 代码和 git 补全" 或手动安装 VSIX 文件。
 
 ### 2. 配置 API 密钥
 
@@ -56,8 +56,9 @@
 |--------|------|--------|
 | `deepseek.apiKey` | DeepSeek API 密钥 | `""` |
 | `deepseek.apiEndpoint` | API 端点地址 | `https://api.deepseek.com` |
-| `deepseek.model` | 模型选择 (deepseek-chat / deepseek-reasoner) | `deepseek-chat` |
-| `deepseek.maxTokens` | 最大生成 token 数 | `2048` |
+| `deepseek.model` | 模型选择 (deepseek-v4-flash / deepseek-v4-pro) | `deepseek-v4-flash` |
+| `deepseek.enableThinking` | 开启思考模式（展示内部推理过程） | `false` |
+| `deepseek.maxTokens` | 最大生成 token 数 | `4096` |
 | `deepseek.temperature` | 生成温度 (0.0 - 2.0) | `0.8` |
 | `deepseek.enableCompletion` | 启用代码补全 | `true` |
 | `deepseek.completionDelay` | 补全触发延迟 (毫秒) | `500` |

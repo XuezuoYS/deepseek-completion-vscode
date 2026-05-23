@@ -51,26 +51,35 @@ export class CommitMessageProvider {
                     this.abortController?.abort();
                 });
 
-                // 获取暂存的更改
-                const stagedChanges = await this.getStagedChanges(repository);
-                
-                if (!stagedChanges) {
-                    vscode.window.showInformationMessage('没有暂存的更改。请先使用 git add 暂存更改。');
+                // 优先获取暂存的更改，若没有则获取未暂存的更改
+                let diff = await this.getStagedChanges(repository);
+                let changeType = '暂存';
+
+                if (!diff) {
+                    diff = await this.getUnstagedChanges(repository);
+                    changeType = '未暂存';
+                }
+
+                if (!diff) {
+                    vscode.window.showInformationMessage('没有检测到任何代码更改。请先修改代码后再试。');
                     return;
                 }
+
+                progress.report({ message: `正在分析${changeType}的更改...` });
 
                 // 获取最近的提交历史作为上下文
                 const recentCommits = await this.getRecentCommits(repository);
 
                 // 构建提示词
-                const prompt = this.buildCommitPrompt(stagedChanges, recentCommits);
+                const prompt = this.buildCommitPrompt(diff, recentCommits, changeType);
 
-                progress.report({ message: '正在分析代码更改...' });
+                // 更新系统提示词，告知变更类型
+                const systemPrompt = this.getSystemPrompt(changeType);
 
                 let result = '';
                 await this.api.chat(
                     [
-                        { role: 'system', content: this.getSystemPrompt() },
+                        { role: 'system', content: systemPrompt },
                         { role: 'user', content: prompt }
                     ],
                     {
@@ -130,9 +139,25 @@ export class CommitMessageProvider {
     }
 
     /**
+     * 获取未暂存的更改内容（工作区更改）
+     */
+    private async getUnstagedChanges(repository: any): Promise<string | null> {
+        try {
+            // 使用 git diff 获取未暂存的工作区更改
+            const diff = await repository.diff(false); // false = unstaged
+            if (!diff || diff.trim().length === 0) {
+                return null;
+            }
+            return diff;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
      * 构建系统提示词
      */
-    private getSystemPrompt(): string {
+    private getSystemPrompt(changeType: string = '暂存'): string {
         const language = DeepSeekConfig.getCommitLanguage();
         const useEmoji = DeepSeekConfig.useCommitEmoji();
         const maxLength = DeepSeekConfig.getCommitMaxLength();
@@ -151,7 +176,11 @@ export class CommitMessageProvider {
             emojiInstruction = '请在提交信息类型前加上合适的 emoji（如 feat: 前加 ✨, fix: 前加 🐛, docs: 前加 📝 等）。';
         }
 
-        return `你是一个专业的 Git 提交信息生成器。你的任务是根据代码更改生成清晰、简洁、规范的提交信息。
+        const autoAddNote = changeType === '未暂存'
+            ? '\n注意：这些更改尚未暂存（git add），请在生成提交信息后手动执行 git add 再提交。'
+            : '';
+
+        return `你是一个专业的 Git 提交信息生成器。你的任务是根据${changeType}的代码更改生成清晰、简洁、规范的提交信息。
 
 要求：
 1. 提交信息格式为：<type>: <description>
@@ -162,18 +191,18 @@ export class CommitMessageProvider {
 6. ${langInstruction}
 7. ${emojiInstruction}
 8. 分析更改的文件名和代码差异来理解更改的意图
-9. 不要包含无意义的描述`;
+9. 不要包含无意义的描述${autoAddNote}`;
     }
 
     /**
      * 构建用户提示词
      */
-    private buildCommitPrompt(diff: string, recentCommits: string): string {
+    private buildCommitPrompt(diff: string, recentCommits: string, changeType: string = '暂存'): string {
         const recentCommitsSection = recentCommits 
             ? `\n\n以下是最近的提交历史，请保持风格一致：\n${recentCommits}`
             : '';
 
-        return `请分析以下代码更改，生成一条规范的 Git 提交信息。\n\n\`\`\`diff\n${diff}\n\`\`\`${recentCommitsSection}`;
+        return `请分析以下${changeType}的代码更改，生成一条规范的 Git 提交信息。\n\n\`\`\`diff\n${diff}\n\`\`\`${recentCommitsSection}`;
     }
 
     /**

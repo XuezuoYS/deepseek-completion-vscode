@@ -24,7 +24,7 @@ export class DeepSeekConfig {
      * 获取模型名称
      */
     static getModel(): string {
-        return vscode.workspace.getConfiguration(this.SECTION).get<string>('model', 'deepseek-chat');
+        return vscode.workspace.getConfiguration(this.SECTION).get<string>('model', 'deepseek-v4-flash');
     }
 
     /**
@@ -46,6 +46,13 @@ export class DeepSeekConfig {
      */
     static isCompletionEnabled(): boolean {
         return vscode.workspace.getConfiguration(this.SECTION).get<boolean>('enableCompletion', true);
+    }
+
+    /**
+     * 是否开启思考模式 (reasoning)
+     */
+    static isThinkingEnabled(): boolean {
+        return vscode.workspace.getConfiguration(this.SECTION).get<boolean>('enableThinking', false);
     }
 
     /**

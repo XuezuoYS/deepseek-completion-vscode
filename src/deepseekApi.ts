@@ -65,7 +65,8 @@ export class DeepSeekAPI {
                 messages,
                 max_tokens: maxTokens,
                 temperature,
-                stream
+                stream,
+                ...(DeepSeekConfig.isThinkingEnabled() ? { thinking: true } : {})
             }),
             signal: options?.signal
         });
