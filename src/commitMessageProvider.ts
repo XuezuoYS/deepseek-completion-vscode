@@ -76,6 +76,9 @@ export class CommitMessageProvider {
                 // 更新系统提示词，告知变更类型
                 const systemPrompt = this.getSystemPrompt(changeType);
 
+                // 先清空 SCM 输入框，准备流式写入
+                repository.inputBox.value = '';
+
                 let result = '';
                 await this.api.chat(
                     [
@@ -88,15 +91,19 @@ export class CommitMessageProvider {
                         stream: true,
                         onToken: (token) => {
                             result += token;
+                            // 流式写入：实时更新 SCM 输入框，让用户看到逐字出现的效果
+                            // 使用轻量清理（仅去除前后空白），保持实时性
+                            repository.inputBox.value = result.trim();
                         },
                         signal: this.abortController.signal
                     }
                 );
 
                 if (result) {
-                    // 清理和格式化结果
+                    // 流结束后，做最终格式化清理（去代码块标记、去前缀、截断等）
                     const commitMessage = this.formatCommitMessage(result);
-                    await this.applyCommitMessage(repository, commitMessage);
+                    repository.inputBox.value = commitMessage;
+                    await this.showSuccessStatus();
                 }
             });
 
@@ -238,13 +245,9 @@ export class CommitMessageProvider {
     }
 
     /**
-     * 将生成的提交信息应用到 VS Code 的 SCM 输入框
+     * 在状态栏显示生成成功提示
      */
-    private async applyCommitMessage(repository: any, message: string): Promise<void> {
-        // 设置提交信息到 SCM 输入框
-        repository.inputBox.value = message;
-        
-        // 在状态栏显示成功消息
+    private async showSuccessStatus(): Promise<void> {
         const statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Left,
             100
