@@ -50,29 +50,12 @@
 
 只需正常编写代码，DeepSeek 会在您输入时自动提供补全建议，按 `Tab` 接受建议，或使用`Alt+\`手动触发。
 
-## 配置选项
-
-| 设置项 | 描述 | 默认值 |
-|--------|------|--------|
-| `deepseek-completion.apiKeyStatus` | API 密钥配置状态（含设置/清除链接） | `❌ 未配置` |
-| `deepseek-completion.apiEndpoint` | API 端点地址 | `https://api.deepseek.com` |
-| `deepseek-completion.enableCompletion` | 启用 DeepSeek 代码补全 | `true` |
-| `deepseek-completion.model` | 模型选择 (deepseek-v4-flash / deepseek-v4-pro) | `deepseek-v4-flash` |
-| `deepseek-completion.enableThinking` | 开启思考模式（展示内部推理过程） | `false` |
-| `deepseek-completion.maxTokens` | 最大生成 token 数 | `4096` |
-| `deepseek-completion.temperature` | 生成温度 (0.0 - 2.0) | `0.8` |
-| `deepseek-completion.completionDelay` | 补全触发延迟 (毫秒) | `50` |
-| `deepseek-completion.commitLanguage` | 提交信息语言 (auto/zh-CN/en) | `auto` |
-| `deepseek-completion.commitEmoji` | 使用 emoji 前缀 | `false` |
-| `deepseek-completion.commitMaxLength` | 提交信息标题最大字符数 | `72` |
-
 ## 命令
 
 | 命令 | 描述 | 快捷键 |
 |------|------|--------|
 | `DeepSeek: 生成 Git 提交信息` | 分析暂存更改并生成提交信息 | `Ctrl+Shift+G c` |
 | `DeepSeek: 为暂存更改生成提交信息` | 同上（显式命令） | - |
-| `DeepSeek: 解释所选提交` | 解释历史提交的内容 | - |
 
 ## 技术实现
 
