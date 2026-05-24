@@ -148,6 +148,13 @@ export class DeepSeekConfig {
     }
 
     /**
+     * 获取 Git 提交历史参考的最大条目数
+     */
+    static getCommitHistoryMaxCount(): number {
+        return vscode.workspace.getConfiguration(this.SECTION).get<number>('commitHistoryMaxCount', 10);
+    }
+
+    /**
      * 验证 API 密钥是否已配置
      */
     static async validateConfig(): Promise<{ valid: boolean; message?: string }> {

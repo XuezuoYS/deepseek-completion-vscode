@@ -134,7 +134,8 @@ export class CommitMessageProvider {
     /**
      * 获取最近的提交历史
      */
-    private async getRecentCommits(repository: any, count: number = 3): Promise<string> {
+    private async getRecentCommits(repository: any, count?: number): Promise<string> {
+        count = count ?? DeepSeekConfig.getCommitHistoryMaxCount();
         try {
             const commits = await repository.log({ maxEntries: count });
             return commits.map((commit: any, index: number) => {

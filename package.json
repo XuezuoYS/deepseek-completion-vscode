@@ -2,7 +2,7 @@
   "name": "deepseek-completion",
   "displayName": "deepseek 代码和 git 补全",
   "description": "使用 DeepSeek AI 生成 Git 提交信息和智能代码补全",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "xuezuoys-used-ai",
   "engines": {
     "vscode": "^1.85.0"
@@ -159,6 +159,13 @@
           "minimum": 30,
           "maximum": 200,
           "markdownDescription": "提交信息标题的最大字符数"
+        },
+        "deepseek-completion.commitHistoryMaxCount": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "markdownDescription": "生成提交信息时参考的 Git 提交历史最大条目数，用于分析历史提交风格以生成一致的提交信息"
         },
         "deepseek-completion.triggerKey": {
           "type": "string",
