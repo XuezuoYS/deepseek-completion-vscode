@@ -34,11 +34,18 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
             return undefined;
         }
 
-        // SCM 提交信息输入框（URI scheme: vscode-scm）：默认关闭，需单独启用
-        if (document.uri.scheme === 'vscode-scm') {
+        // 文档类型白名单：仅对真正的代码编辑文档启用补全
+        // - vscode-scm：Git 提交输入框，需单独开启 enableCompletionInScm
+        // - file / untitled / vscode-notebook-cell：普通代码文件、未命名文件、Notebook 单元格
+        // - 其他所有 scheme（AI 对话框、输出面板、diff 视图等）：一律禁用，避免与 AI 助手自身建议冲突
+        const scheme = document.uri.scheme;
+        if (scheme === 'vscode-scm') {
             if (!DeepSeekConfig.isScmCompletionEnabled()) {
                 return undefined;
             }
+        } else if (!['file', 'untitled', 'vscode-notebook-cell'].includes(scheme)) {
+            console.log(`[DeepSeek] 跳过非代码文档补全: scheme=${scheme}, languageId=${document.languageId}`);
+            return undefined;
         }
 
         const apiKey = await DeepSeekConfig.getApiKey();
