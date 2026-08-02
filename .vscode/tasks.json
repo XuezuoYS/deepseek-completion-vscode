@@ -2,8 +2,13 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "type": "npm",
-            "script": "watch",
+            "type": "shell",
+            "label": "watch",
+            "command": "npm.cmd",
+            "args": ["run", "watch"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "problemMatcher": "$tsc-watch",
             "isBackground": true,
             "presentation": {

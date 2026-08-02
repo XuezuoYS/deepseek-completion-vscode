@@ -18,6 +18,7 @@ export class CommitMessageProvider {
      * 生成提交信息
      */
     async generateCommitMessage(): Promise<void> {
+        console.log('[DeepSeek Commit] 开始生成提交信息');
         const validation = await DeepSeekConfig.validateConfig();
         if (!validation.valid) {
             vscode.window.showErrorMessage(validation.message!, { modal: true });
@@ -54,13 +55,16 @@ export class CommitMessageProvider {
                 // 优先获取暂存的更改，若没有则获取未暂存的更改
                 let diff = await this.getStagedChanges(repository);
                 let changeType = '暂存';
+                console.log(`[DeepSeek Commit] 暂存区 diff 长度: ${diff?.length ?? 0}`);
 
                 if (!diff) {
                     diff = await this.getUnstagedChanges(repository);
                     changeType = '未暂存';
+                    console.log(`[DeepSeek Commit] 未暂存区 diff 长度: ${diff?.length ?? 0}`);
                 }
 
                 if (!diff) {
+                    console.log('[DeepSeek Commit] 未检测到任何代码更改');
                     vscode.window.showInformationMessage('没有检测到任何代码更改。请先修改代码后再试。');
                     return;
                 }
@@ -76,38 +80,64 @@ export class CommitMessageProvider {
                 // 更新系统提示词，告知变更类型
                 const systemPrompt = this.getSystemPrompt(changeType);
 
-                // 先清空 SCM 输入框，准备流式写入
+                // 清空 SCM 输入框
                 repository.inputBox.value = '';
 
-                let result = '';
-                await this.api.chat(
-                    [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: prompt }
-                    ],
-                    {
-                        temperature: 0.3,
-                        maxTokens: 500,
-                        stream: true,
-                        onToken: (token) => {
-                            result += token;
-                            // 流式写入：实时更新 SCM 输入框，让用户看到逐字出现的效果
-                            // 使用轻量清理（仅去除前后空白），保持实时性
-                            repository.inputBox.value = result.trim();
-                        },
-                        signal: this.abortController.signal
-                    }
-                );
+                // 流式生成提交信息，返回空则自动重试（最多 3 次）
+                let rawResult = '';
+                const MAX_ATTEMPTS = 3;
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                    progress.report({ message: `正在生成提交信息（第 ${attempt}/${MAX_ATTEMPTS} 次尝试）...` });
+                    console.log(`[DeepSeek Commit] 发起 API 请求，第 ${attempt}/${MAX_ATTEMPTS} 次`);
+                    const attemptStart = Date.now();
+                    const content = await this.requestCommitMessage(systemPrompt, prompt, (token) => {
+                        rawResult += token;
+                        // 流式写入：实时更新 SCM 输入框，让用户看到逐字出现的效果
+                        repository.inputBox.value = rawResult.trim();
+                    });
+                    console.log(`[DeepSeek Commit] 第 ${attempt} 次返回，耗时 ${Date.now() - attemptStart}ms，内容长度 ${content?.length ?? 0}`);
 
-                if (result) {
-                    // 流结束后，做最终格式化清理（去代码块标记、去前缀、截断等）
-                    const commitMessage = this.formatCommitMessage(result);
-                    repository.inputBox.value = commitMessage;
-                    await this.showSuccessStatus();
+                    if (content && content.trim()) {
+                        rawResult = content;
+                        break;
+                    }
+
+                    console.log(`[DeepSeek Commit] 第 ${attempt} 次返回空内容`);
+                    if (attempt < MAX_ATTEMPTS) {
+                        // 清空输入框，准备下一次尝试
+                        rawResult = '';
+                        repository.inputBox.value = '';
+                        // 明确告知用户正在自动重试，避免误以为生成时间过长
+                        vscode.window.showInformationMessage(
+                            `DeepSeek 第 ${attempt} 次生成返回空内容，正在自动重试（第 ${attempt + 1}/${MAX_ATTEMPTS} 次）...`
+                        );
+                    }
                 }
+
+                // 多次尝试后仍为空 → 明确提示
+                if (!rawResult || !rawResult.trim()) {
+                    console.log('[DeepSeek Commit] 多次尝试后仍返回空内容');
+                    vscode.window.showErrorMessage(`DeepSeek 连续 ${MAX_ATTEMPTS} 次返回空内容，请稍后重试`);
+                    return;
+                }
+
+                // 格式修复（去代码块、去前缀、处理 type 重复、截断、emoji 映射）
+                const commitMessage = this.formatCommitMessage(rawResult);
+
+                // 返回非空但格式修复后为空 → 单独提示
+                if (!commitMessage || !commitMessage.trim()) {
+                    console.log('[DeepSeek Commit] 原始内容非空但格式化后为空');
+                    vscode.window.showErrorMessage('DeepSeek 返回内容格式异常，无法生成有效提交信息，请重试');
+                    return;
+                }
+
+                repository.inputBox.value = commitMessage;
+                console.log(`[DeepSeek Commit] 已填入提交信息: ${commitMessage}`);
+                await this.showSuccessStatus();
             });
 
         } catch (error: any) {
+            console.error('[DeepSeek Commit] 生成失败:', error);
             if (error.name === 'AbortError' || error.message?.includes('abort')) {
                 return;
             }
@@ -174,7 +204,6 @@ export class CommitMessageProvider {
      */
     private getSystemPrompt(changeType: string = '暂存'): string {
         const language = DeepSeekConfig.getCommitLanguage();
-        const useEmoji = DeepSeekConfig.useCommitEmoji();
         const maxLength = DeepSeekConfig.getCommitMaxLength();
 
         let langInstruction = '';
@@ -184,11 +213,6 @@ export class CommitMessageProvider {
             langInstruction = 'Please generate commit messages in English.';
         } else {
             langInstruction = '根据代码更改的内容自动选择语言（中文或英文）生成提交信息。';
-        }
-
-        let emojiInstruction = '';
-        if (useEmoji) {
-            emojiInstruction = '请在提交信息类型前加上合适的 emoji（如 feat: 前加 ✨, fix: 前加 🐛, docs: 前加 📝 等）。';
         }
 
         const autoAddNote = changeType === '未暂存'
@@ -204,10 +228,9 @@ export class CommitMessageProvider {
 4. 如果需要，空一行后添加详细描述
 5. 详细描述说明更改的原因和影响
 6. ${langInstruction}
-7. ${emojiInstruction}
-8. 分析更改的文件名和代码差异来理解更改的意图
-9. 不要包含无意义的描述
-10. **最重要的是：仔细分析下面提供的最近提交历史，严格模仿其措辞风格、详细程度、标点使用、大小写习惯和整体格式**${autoAddNote}`;
+7. 分析更改的文件名和代码差异来理解更改的意图
+8. 不要包含无意义的描述
+9. **最重要的是：仔细分析下面提供的最近提交历史，严格模仿其措辞风格、详细程度、标点使用、大小写习惯和整体格式**${autoAddNote}`;
     }
 
     /**
@@ -222,7 +245,32 @@ export class CommitMessageProvider {
     }
 
     /**
-     * 格式化提交信息
+     * 请求生成提交信息（流式输出）
+     */
+    private async requestCommitMessage(
+        systemPrompt: string,
+        prompt: string,
+        onToken: (token: string) => void
+    ): Promise<string> {
+        return this.api.chat(
+            [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            {
+                temperature: 0.3,
+                maxTokens: 800,
+                stream: true,
+                onToken,
+                thinking: false,
+                signal: this.abortController?.signal
+            }
+        );
+    }
+
+    /**
+     * 格式化提交信息：去代码块、去前缀、处理 type 重复、标题截断、emoji 映射
+     * 若返回空字符串，说明原始内容非空但无法修复为有效提交信息
      */
     private formatCommitMessage(raw: string): string {
         // 移除可能的 markdown 代码块标记
@@ -233,16 +281,49 @@ export class CommitMessageProvider {
         // 移除可能的前缀如 "Commit Message:" 等
         message = message.replace(/^(提交信息|Commit Message|commit message|message):?\s*/i, '').trim();
 
+        // 处理 "type: type: xxx" 重复（如 "ci: ci: xxx" → "ci: xxx"）
+        message = message.replace(/^([a-zA-Z]+):\s*\1\s*:\s*/i, '$1: ').trim();
+
         // 确保第一行不超过最大长度
         const lines = message.split('\n');
         const maxLength = DeepSeekConfig.getCommitMaxLength();
         if (lines[0].length > maxLength) {
-            // 如果标题太长，尝试在合理位置截断
-            const truncated = lines[0].substring(0, maxLength - 3) + '...';
-            lines[0] = truncated;
+            lines[0] = lines[0].substring(0, maxLength - 3) + '...';
         }
 
-        return lines.join('\n').trim();
+        let result = lines.join('\n').trim();
+
+        // emoji：由扩展端按 type 映射（模型已带 emoji 则不重复加）
+        if (DeepSeekConfig.useCommitEmoji()) {
+            const typeMatch = result.match(/^([a-zA-Z]+):/);
+            if (typeMatch) {
+                const emoji = this.getEmojiForType(typeMatch[1].toLowerCase());
+                if (emoji && !result.startsWith(emoji)) {
+                    result = `${emoji} ${result}`;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 根据提交类型获取 emoji 前缀（由扩展端映射，保证可控）
+     */
+    private getEmojiForType(type: string): string {
+        const emojiMap: Record<string, string> = {
+            feat: '✨',
+            fix: '🐛',
+            docs: '📝',
+            style: '💄',
+            refactor: '♻️',
+            ui: '🎨',
+            perf: '⚡',
+            test: '✅',
+            chore: '🔧',
+            ci: '👷'
+        };
+        return emojiMap[type] || '';
     }
 
     /**

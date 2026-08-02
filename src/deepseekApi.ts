@@ -67,6 +67,10 @@ export class DeepSeekAPI {
             stream?: boolean;
             onToken?: (token: string) => void;
             signal?: AbortSignal;
+            /** 是否使用 JSON Output 模式（response_format: json_object） */
+            jsonMode?: boolean;
+            /** 是否开启思考模式；传 false 可强制关闭（如 git 提交信息生成） */
+            thinking?: boolean;
         }
     ): Promise<string> {
         const apiKey = await DeepSeekConfig.getApiKey();
@@ -82,22 +86,31 @@ export class DeepSeekAPI {
         const temperature = options?.temperature ?? DeepSeekConfig.getTemperature();
         const stream = options?.stream ?? false;
 
+        // 思考模式：默认跟随全局配置，调用方可显式覆盖（如 git 提交信息生成强制关闭）
+        const thinkingEnabled = options?.thinking ?? DeepSeekConfig.isThinkingEnabled();
+
+        const body: Record<string, any> = {
+            model,
+            messages,
+            max_tokens: maxTokens,
+            temperature,
+            stream,
+            ...(thinkingEnabled
+                ? { thinking: { type: "enabled" }, reasoning_effort: "high" }
+                : {})
+        };
+        // JSON Output 模式（DeepSeek JSON Output 功能）
+        if (options?.jsonMode) {
+            body.response_format = { type: 'json_object' };
+        }
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-                model,
-                messages,
-                max_tokens: maxTokens,
-                temperature,
-                stream,
-                ...(DeepSeekConfig.isThinkingEnabled() 
-                    ? { thinking: { type: "enabled" }, reasoning_effort: "high" } 
-                    : {})
-            }),
+            body: JSON.stringify(body),
             signal: options?.signal
         });
 
