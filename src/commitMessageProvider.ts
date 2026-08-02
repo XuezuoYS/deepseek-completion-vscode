@@ -79,6 +79,7 @@ export class CommitMessageProvider {
 
                 // 更新系统提示词，告知变更类型
                 const systemPrompt = this.getSystemPrompt(changeType);
+                console.log(`[DeepSeek Commit] prompt 总长度: ${systemPrompt.length + prompt.length}`);
 
                 // 清空 SCM 输入框
                 repository.inputBox.value = '';
@@ -216,32 +217,38 @@ export class CommitMessageProvider {
         }
 
         const autoAddNote = changeType === '未暂存'
-            ? '\n注意：这些更改尚未暂存（git add），请在生成提交信息后手动执行 git add 再提交。'
+            ? '这些更改尚未暂存（git add），生成后请手动执行 git add 再提交。'
             : '';
 
-        return `你是一个专业的 Git 提交信息生成器。你的任务是根据${changeType}的代码更改生成清晰、简洁、规范的提交信息。
+        return `你是一个 Git 提交信息生成器。请根据${changeType}的代码更改，直接输出一条规范的 Git 提交信息。
 
-要求：
-1. 提交信息格式为：<type>: <description>
-2. 类型包括：feat（新功能）、fix（修复）、docs（文档）、style（样式）、refactor（重构）、ui（用户界面）、perf（性能）、test（测试）、chore（杂项）、ci（CI/CD）、特殊类型（如 bump version 等）
-3. 第一行是标题，不超过 ${maxLength} 个字符
-4. 如果需要，空一行后添加详细描述
-5. 详细描述说明更改的原因和影响
-6. ${langInstruction}
-7. 分析更改的文件名和代码差异来理解更改的意图
-8. 不要包含无意义的描述
-9. **最重要的是：仔细分析下面提供的最近提交历史，严格模仿其措辞风格、详细程度、标点使用、大小写习惯和整体格式**${autoAddNote}`;
+格式：第一行为 <type>: <标题>，标题不超过 ${maxLength} 个字符；如需补充说明，空一行后写详细描述。
+type 取值：feat、fix、docs、style、refactor、ui、perf、test、chore、ci 等；若无法确定类型则使用 chore。
+${langInstruction}
+${autoAddNote}
+
+严格要求：
+1. 直接输出提交信息本身，不要输出任何解释、不要用代码块包裹、不要加引号
+2. 严禁返回空内容或空白，即使更改难以理解也必须给出一个合理的提交信息
+3. 分析代码差异理解意图，并模仿下面最近提交历史的措辞风格和格式`;
     }
 
     /**
      * 构建用户提示词
      */
     private buildCommitPrompt(diff: string, recentCommits: string, changeType: string = '暂存'): string {
+        // 限制 diff 长度，防止超长 prompt 导致模型输出异常（如返回空）
+        const MAX_DIFF_LENGTH = 10000;
+        let diffSection = diff;
+        if (diff.length > MAX_DIFF_LENGTH) {
+            diffSection = diff.substring(0, MAX_DIFF_LENGTH) + '\n...（diff 过长已截断，请基于以上内容生成）';
+        }
+
         const recentCommitsSection = recentCommits 
-            ? `\n\n以下是最近的提交历史，请仔细分析它们的风格（措辞、语气、详略、格式），并严格按照此风格生成新的提交信息：\n${recentCommits}`
+            ? `\n\n以下是最近的提交历史，请分析并模仿其措辞风格和格式生成新的提交信息：\n${recentCommits}`
             : '';
 
-        return `请分析以下${changeType}的代码更改，生成一条规范的 Git 提交信息。\n\n\`\`\`diff\n${diff}\n\`\`\`${recentCommitsSection}`;
+        return `请分析以下${changeType}的代码更改，生成一条规范的 Git 提交信息。\n\n\`\`\`diff\n${diffSection}\n\`\`\`${recentCommitsSection}`;
     }
 
     /**
@@ -259,7 +266,7 @@ export class CommitMessageProvider {
             ],
             {
                 temperature: 0.3,
-                maxTokens: 800,
+                maxTokens: 1024,
                 stream: true,
                 onToken,
                 thinking: false,
