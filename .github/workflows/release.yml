@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # 仅当最新提交信息以 "bump version" 开头时触发
+    if: startsWith(github.event.head_commit.message, 'bump version')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get version from package.json
+        id: version
+        run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Package VSIX
+        run: npx @vscode/vsce package --allow-missing-repository
+
+      # 从 CHANGELOG.md 提取当前版本（vX.Y.Z）对应的更新日志条目，作为 Release 说明
+      - name: Extract changelog for this version
+        run: |
+          awk -v v="[${{ steps.version.outputs.value }}]" 'index($0, "## " v) == 1 { capture = 1; next } capture && /^## \[/ { exit } capture { print }' CHANGELOG.md > RELEASE_NOTES.md
+          # 未找到对应版本条目时回退为默认标题，避免空文件导致 Release 失败
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Release v${{ steps.version.outputs.value }}" > RELEASE_NOTES.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          files: "*.vsix"
+          body_path: RELEASE_NOTES.md
