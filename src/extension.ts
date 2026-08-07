@@ -113,6 +113,9 @@ export function activate(context: vscode.ExtensionContext) {
     const triggerCompletionCommand = vscode.commands.registerCommand(
         'deepseek-completion.triggerCompletion',
         () => {
+            // 先标记本次为"用户主动触发"，再触发 VS Code 的显式内联补全。
+            // 关闭自动补全后，provider 仅放行由该标记放行的请求。
+            completionProvider.markManualTrigger();
             vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
         }
     );

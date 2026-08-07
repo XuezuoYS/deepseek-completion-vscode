@@ -13,9 +13,29 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
     private apiKeyWarningShown = false;
     // 持久化状态栏：在补全等待期间持续显示旋转图标
     private statusBarItem: vscode.StatusBarItem | null = null;
+    // "仅快捷键触发"模式（enableAutoCompletion=false）下，标记最近一次由用户快捷键主动触发。
+    // 用于拦截 VS Code 内部以 Explicit/Invoke 类型发起的"伪手动"重触发，避免绕过开关造成自动补全。
+    private manualTriggerAllowed = false;
+    private manualTriggerResetTimer: NodeJS.Timeout | null = null;
 
     constructor() {
         this.api = new DeepSeekAPI();
+    }
+
+    /**
+     * 标记一次用户主动的快捷键触发（由 deepseek-completion.triggerCompletion 命令调用）。
+     * 关闭自动补全后，仅放行紧随该标记的显式触发请求。
+     */
+    markManualTrigger(): void {
+        this.manualTriggerAllowed = true;
+        if (this.manualTriggerResetTimer) {
+            clearTimeout(this.manualTriggerResetTimer);
+        }
+        // 兜底：一段时间后自动复位，避免悬空标记被后续的 VS Code 内部重触发误用
+        this.manualTriggerResetTimer = setTimeout(() => {
+            this.manualTriggerAllowed = false;
+            this.manualTriggerResetTimer = null;
+        }, 30_000);
     }
 
     /**
@@ -66,11 +86,22 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
         }
         this.apiKeyWarningShown = false;
 
-        // 自动触发时：检查是否启用了自动补全 以及 行前缀长度
-        if (isAuto) {
-            if (!DeepSeekConfig.isAutoCompletionEnabled()) {
+        // 检查"自动补全"开关：
+        // - 自动触发（输入/粘贴等）：关闭后一律不响应，并立即清除手动触发标记，
+        //   保证"仅快捷键触发"——快捷键后的任何输入都不会再产生补全
+        // - 手动触发（Explicit/Invoke）：关闭后仅放行由快捷键命令（markManualTrigger）置位的请求，
+        //   拦截 VS Code 内部以显式类型发起的重触发（如提示组件 triggerExplicitly），
+        //   否则这些请求会绕过开关，表现为"关闭自动补全后仍自动补全"
+        if (!DeepSeekConfig.isAutoCompletionEnabled()) {
+            if (isAuto) {
+                this.manualTriggerAllowed = false;
                 return undefined;
             }
+            if (!this.manualTriggerAllowed) {
+                return undefined;
+            }
+        } else if (isAuto) {
+            // 自动补全开启时：过滤空行/过短的输入，避免无意义请求
             const linePrefix = document.lineAt(position).text.substring(0, position.character);
             if (!linePrefix.trim() || linePrefix.trim().length < 2) {
                 return undefined;
@@ -300,6 +331,12 @@ export class DeepSeekCompletionProvider implements vscode.InlineCompletionItemPr
             controller.abort();
         }
         this.requestQueue.clear();
+        // 清除手动触发标记及其复位定时器
+        if (this.manualTriggerResetTimer) {
+            clearTimeout(this.manualTriggerResetTimer);
+            this.manualTriggerResetTimer = null;
+        }
+        this.manualTriggerAllowed = false;
         // 销毁状态栏
         if (this.statusBarItem) {
             this.statusBarItem.dispose();
