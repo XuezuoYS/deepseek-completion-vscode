@@ -57,10 +57,16 @@ export class DeepSeekConfig {
     }
 
     /**
-     * 获取模型名称
+     * 获取模型名称（用于 API 调用的模型 ID）
+     * 设置项显示格式为「模型描述 - 模型名」，这里返回模型名。
      */
     static getModel(): string {
-        return vscode.workspace.getConfiguration(this.SECTION).get<string>('model', 'deepseek-v4-flash');
+        const model = vscode.workspace.getConfiguration(this.SECTION).get<string>('model', 'deepseek-flash');
+        // 兼容历史版本遗留的模型 ID
+        const legacyMap: Record<string, string> = {
+            'deepseek-v4-flash': 'deepseek-flash'
+        };
+        return legacyMap[model] ?? model;
     }
 
     /**

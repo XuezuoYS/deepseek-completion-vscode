@@ -101,16 +101,12 @@
         },
         "deepseek-completion.model": {
           "type": "string",
-          "default": "deepseek-v4-flash",
+          "default": "deepseek-flash",
           "enum": [
-            "deepseek-v4-flash",
+            "deepseek-flash",
             "deepseek-v4-pro"
           ],
-          "enumDescriptions": [
-            "DeepSeek V4 Flash（快速响应，性价比之选，默认推荐）",
-            "DeepSeek V4 Pro（更强推理能力，适合复杂任务）"
-          ],
-          "markdownDescription": "DeepSeek V4 模型选择。Flash 速度快、性价比高；Pro 推理能力更强。"
+          "markdownDescription": "DeepSeek 模型选择（模型名用于 API 调用）"
         },
         "deepseek-completion.enableThinking": {
           "type": "boolean",
