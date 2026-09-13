@@ -1,5 +1,12 @@
 # 更新日志
 
+## [1.0.6] - 2026-09-13
+
+### 变更
+- 🔄 更新可选模型为 `deepseek-flash`（DeepSeek V4.1 Flash）与 `deepseek-v4-pro`（DeepSeek V4 Pro 0813）
+- 🏷️ 模型选择项仅显示模型名，移除「性价比之选」等描述性文案
+- 🧩 兼容历史遗留的模型 ID `deepseek-v4-flash`（自动映射为 `deepseek-flash`）
+
 ## [1.0.5] - 2026-08-07
 
 ### 修复
