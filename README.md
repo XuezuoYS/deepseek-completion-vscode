@@ -1,6 +1,6 @@
 # deepseek 代码和 git 补全
 
-[Github](https://github.com/XuezuoYS/deepseek-completion-vscode)
+[Github](https://github.com/XuezuoYS/deepseek-completion-vscode) 
 
 **警告：此仓库基本由 Deepseek 大人开发，请谨慎使用**
 
