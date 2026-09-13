@@ -6,19 +6,14 @@ on:
       - release
 
 permissions:
-  # contents: write 用于创建 GitHub Release；id-token: write 用于申请 OIDC 可信发布令牌
+  # 用于创建 GitHub Release
   contents: write
-  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     # 仅当最新提交信息以 "bump version" 开头时触发
     if: startsWith(github.event.head_commit.message, 'bump version')
-    # `vsce publish --oidc` 目前仅在 vsce 预发布版提供（稳定版 3.9.2 及其以下无此参数）
-    # 待 3.9.3 稳定版发布后，可将 VSCE_VERSION 改为 latest 或移除该变量
-    env:
-      VSCE_VERSION: 3.9.3-12
 
     steps:
       - name: Checkout
@@ -39,7 +34,7 @@ jobs:
         run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Package VSIX
-        run: npx --yes @vscode/vsce@$VSCE_VERSION package --allow-missing-repository
+        run: npx @vscode/vsce package --allow-missing-repository
 
       # 从 CHANGELOG.md 提取当前版本（vX.Y.Z）对应的更新日志条目，作为 Release 说明
       - name: Extract changelog for this version
@@ -49,16 +44,6 @@ jobs:
           if [ ! -s RELEASE_NOTES.md ]; then
             echo "v${{ steps.version.outputs.value }}" > RELEASE_NOTES.md
           fi
-
-      # 发布到 VS Code 插件市场：OIDC 可信发布（无需 PAT，不存在长期凭据泄露风险）
-      # 前置条件：已在插件市场发布者管理页为该仓库 + 本工作流配置 trusted publishing policy
-      - name: Publish to VS Code Marketplace
-        run: |
-          npx --yes @vscode/vsce@$VSCE_VERSION publish \
-            --packagePath "deepseek-completion-${{ steps.version.outputs.value }}.vsix" \
-            --allow-missing-repository \
-            --skip-duplicate \
-            --oidc
 
       - name: Create Release
         env:

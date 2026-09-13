@@ -131,35 +131,25 @@ deepseek-completion/
 
 > **可复现构建**：克隆仓库后，只需依次执行 `npm ci` → `npm run compile` → `npx @vscode/vsce package` 即可从源码生成完全一致的 VSIX 安装包。
 
-## 自动发布（CI）
+## 自动构建与发布（CI）
 
 `.github/workflows/release.yml` 在向 `release` 分支推送**提交信息以 `bump version` 开头**的提交时自动执行：
 
 1. 安装依赖 → 打包 VSIX（`vsce package`）
 2. 从 `CHANGELOG.md` 提取当前版本条目作为 Release 说明
-3. 发布到 **VS Code 插件市场**（`vsce publish --oidc`，已发布版本自动跳过）
-4. 在 GitHub 创建对应的 Release 并附带 VSIX 产物
+3. 在 GitHub 创建对应的 Release 并附带 VSIX 产物
 
-### 认证方式：OIDC 可信发布（无需 PAT）
+> 工作流使用 Node 22（vsce `3.9+` 的基线要求）。
 
-发布使用 **OIDC 可信发布**：工作流申请 GitHub Actions OIDC 令牌（受众 `marketplace.visualstudio.com`），换取 Marketplace 的短期凭据后发布。仓库中**不需要保存任何长期令牌**（工作流已声明 `permissions: id-token: write`）。
+### 关于自动上架到插件市场
 
-> ⚠️ 不采用 Personal Access Token 的原因：Azure DevOps 的 Global PAT（跨所有组织的 PAT）将于 **2026-12-01 全部停用**，而 Marketplace 发布历史上要求 PAT 具备 “all accessible organizations” 权限，该方式即将失效。
+当前**不自动发布到 VS Code 插件市场**——三种自动化方案目前都缺少可用条件：
 
-### 首次配置
-
-| 项目 | 要求 |
+| 方案 | 现状 |
 |------|------|
-| 发布者 | `package.json` 中的 `publisher`（`xuezuoys`）需为插件市场中已创建的发布者 ID |
-| 可信发布策略 | 在 [发布者管理页](https://marketplace.visualstudio.com/manage) 为该发布者配置 trusted publishing policy，填写本仓库（`<owner>/<repo>`）与工作流文件（`release.yml`） |
-
-### 临时使用 PAT（可选）
-
-若可信发布策略暂时无法配置，可退回 PAT 方式：在仓库 Secrets 中新增 `VSCE_PAT`（Azure DevOps → 选中组织 → 用户设置 → Personal Access Tokens → 新建令牌，Organization 选 `All accessible organizations`，Scopes 勾选 `Marketplace → Manage`），并将工作流中 `--oidc` 换成 `-p "$VSCE_PAT"`、同时为该步骤补上 `env: VSCE_PAT: ${{ secrets.VSCE_PAT }}`。
-
-### 版本说明
-
-`--oidc` 目前仅由 `vsce` 预发布版提供（稳定版 `3.9.2` 及以下无此参数），因此工作流通过 `VSCE_VERSION` 固定使用预发布版；待 `3.9.3` 稳定版发布后，可删除该变量并改回 `npx @vscode/vsce`。另外 vsce `3.9+` 要求 Node.js ≥ 22，工作流已相应调整。
+| `vsce publish --oidc`（GitHub Actions 原生可信发布） | Marketplace 端尚未上线配套的 trusted publishing 策略配置，调用直接返回 `404 ... '/_apis/gallery/token' was not found`（见 [microsoft/vscode-vsce#1291](https://github.com/microsoft/vscode-vsce/pull/1291)） |
+| `vsce publish --azure-credential`（Entra ID + OIDC 联合身份） | 需要一个 Entra ID 租户；个人微软账号若从未注册过 Azure（名下无租户），登录 <https://entra.microsoft.com> 会报「所选的用户帐户在租户 Microsoft Services 中不存在…」，须先注册[免费 Azure 账号](https://azure.microsoft.com/free) |
+| `vsce publish -p <PAT>` | Azure DevOps 的 Global PAT 将于 **2026-12-01 全部停用**，而 Marketplace 发布要求 PAT 具备 “all accessible organizations” 权限 |
 
 ## 许可证
 
