@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import { DeepSeekAPI } from './deepseekApi';
 import { DeepSeekConfig } from './config';
 
+/** 提交信息中不应出现的"详细："类标签（可带 - 列表前缀），命中时只保留前缀 */
+const DETAIL_LABEL_PATTERN = /^[ \t]*([-*+•][ \t]*)?(详细|详情|说明|变更说明|改动说明|Details|Description)[:：][ \t]*/i;
+
 /**
  * Git 提交信息生成器
  * 使用 DeepSeek 分析暂存区的更改并生成提交信息
@@ -170,14 +173,14 @@ export class CommitMessageProvider {
         try {
             const commits = await repository.log({ maxEntries: count });
             return commits.map((commit: any, index: number) => {
-                const lines = commit.message.trim().split('\n');
+                const lines = commit.message.trim().split('\n').filter((l: string) => l.trim());
                 const title = lines[0];
-                const body = lines.slice(1).filter((l: string) => l.trim()).join('\n');
-                let entry = `提交 ${index + 1}: ${title}`;
-                if (body) {
-                    entry += `\n   详细: ${body.substring(0, 200)}`;
-                }
-                return entry;
+                // 历史正文同样过滤掉"详细："类标签，避免模型照搬该标签
+                const body = lines.slice(1)
+                    .map((l: string) => l.replace(DETAIL_LABEL_PATTERN, '$1'))
+                    .join('\n')
+                    .substring(0, 200);
+                return body ? `提交 ${index + 1}: ${title}\n${body}` : `提交 ${index + 1}: ${title}`;
             }).join('\n\n');
         } catch {
             return '';
@@ -222,15 +225,16 @@ export class CommitMessageProvider {
 
         return `你是一个 Git 提交信息生成器。请根据${changeType}的代码更改，直接输出一条规范的 Git 提交信息。
 
-格式：第一行为 <type>: <标题>，标题不超过 ${maxLength} 个字符；如需补充说明，空一行后写详细描述。
+格式：第一行为 <type>: <标题>，标题不超过 ${maxLength} 个字符；如需补充说明，空一行后用 - 逐条列出要点即可。
 type 取值：feat、fix、docs、style、refactor、ui、perf、test、chore、ci 等；若无法确定类型则使用 chore。
 ${langInstruction}
 ${autoAddNote}
 
 严格要求：
-1. 直接输出提交信息本身，不要输出任何解释、不要用代码块包裹、不要加引号
-2. 严禁返回空内容或空白，即使更改难以理解也必须给出一个合理的提交信息
-3. 分析代码差异理解意图，并模仿下面最近提交历史的措辞风格和格式`;
+1. 禁止输出"详细：""详情：""说明：""变更说明：""Details:"等标签字样，补充说明直接以 - 开头逐条列出，不要加任何小标题
+2. 直接输出提交信息本身，不要输出任何解释、不要用代码块包裹、不要加引号
+3. 严禁返回空内容或空白，即使更改难以理解也必须给出一个合理的提交信息
+4. 分析代码差异理解意图，并模仿下面最近提交历史的措辞风格`;
     }
 
     /**
@@ -245,7 +249,7 @@ ${autoAddNote}
         }
 
         const recentCommitsSection = recentCommits 
-            ? `\n\n以下是最近的提交历史，请分析并模仿其措辞风格和格式生成新的提交信息：\n${recentCommits}`
+            ? `\n\n以下是最近的提交历史，请分析并模仿其措辞风格生成新的提交信息（不要出现"详细："等小标题）：\n${recentCommits}`
             : '';
 
         return `请分析以下${changeType}的代码更改，生成一条规范的 Git 提交信息。\n\n\`\`\`diff\n${diffSection}\n\`\`\`${recentCommitsSection}`;
@@ -290,6 +294,13 @@ ${autoAddNote}
 
         // 处理 "type: type: xxx" 重复（如 "ci: ci: xxx" → "ci: xxx"）
         message = message.replace(/^([a-zA-Z]+):\s*\1\s*:\s*/i, '$1: ').trim();
+
+        // 兜底：移除模型自行追加的"详细："等标签，只保留标题与 - 列表内容（标题行保留原样）
+        const messageLines = message.split('\n');
+        message = [messageLines[0], ...messageLines.slice(1).map(line => line.replace(DETAIL_LABEL_PATTERN, '$1'))]
+            .join('\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
 
         // 确保第一行不超过最大长度
         const lines = message.split('\n');
